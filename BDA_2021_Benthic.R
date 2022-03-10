@@ -144,45 +144,55 @@ Benthic_data %>% group_by(Site, Date, Reach, Location) %>% summarise(AvgBPOC= me
 # Factors in R are stored as a vector of integer values with a corresponding set of character values to use
 # when the factor is displayed. Factors levels are always character values. 
 
-# Changing Site, Reach, Location, and Date to ordered factors, and Replicate
+# Changing Site, Reach, Location, Date, and Replicate to ordered factors.
 Benthic_data[,1:5] <- lapply(Benthic_data[,1:5], as.ordered)
 
 
-#### Full GLMM Model ####
+#### Final GLMMs ####
+
+# This model nests the interactions between date and reach within site and has
+# location and replicate as random factors.
+# Removed interactions that were marginally significant.
 newtest <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach*Date + (1|Location) + (1|Replicate),
               data = Benthic_data, 
               family = Gamma(link="log"))
-plot(newtest)
+plot(newtest) # Bunched in the lower left-hand corner. 
 Anova(newtest)
 AICc(newtest)  # 1373.346
 AIC(newtest) # 1366.746
 
+# All of these interactions and main effects are significant.
+# Cannot be reduced further
 newtest1 <- glmer(Total_BPOC_Mass_per_Area ~ 
                     Site:Date + Site:Reach + Date + Site +
                     (1|Location) + (1|Replicate),
                  data = Benthic_data, 
                  family = Gamma(link="log"))
-plot(newtest1)
-Anova(newtest1)
+plot(newtest1) # Bunched in the lower left-hand corner. 
+Anova(newtest1) 
 AICc(newtest1)  # 1369.576
 AIC(newtest1) # 1366.288
 
+### Full nested models ###
+# All interactions are significant. 
+# Cannot be reduced further
+newtest2 <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach + (1|Location) + (1|Replicate),
+                 data = Benthic_data, 
+                 family = Gamma(link="log"))
+plot(newtest2) # Bunched in the lower left-hand corner. 
+Anova(newtest2)
+AICc(newtest2) # 1373.346
+AIC(newtest2) # 1366.746
 
-test <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location*Date + (1|Replicate),
-                        data = Benthic_data, 
-                        family = Gamma(link="log"))
-plot(test)
-Anova(test)
-AICc(test)  # 1443.321
-AIC(test) # 1382.521
-
-test1 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + (1|Replicate),
-              data = Benthic_data, 
-              family = Gamma(link="log"))
-plot(test1)
-Anova(test1)
-AICc(test1)  # 1404.622
-AIC(test1) # 1398.664
+# All interactions are significant ***
+# Cannot be reduced further
+test3 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + Date + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(test3)
+Anova(test3)
+AICc(test3)  # 1374.342
+AIC(test3) # 1367.061
 
 
 test2 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach*Date + Site/Reach/Location + (1|Replicate),
@@ -193,14 +203,63 @@ Anova(test2)
 AICc(test2)  # 1377.408
 AIC(test2) # 1361.036
 
-test3 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + Date + (1|Replicate),
+test2.1 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Location + Site:Date +
+                   Site:Reach + Date + Site + (1|Replicate),
                data = Benthic_data, 
                family = Gamma(link="log"))
-plot(test3)
-Anova(test3)
-AICc(test3)  # 1374.342
-AIC(test3) # 1367.061
+plot(test2.1)
+Anova(test2.1)
+AICc(test2.1)  # 1369.942
+AIC(test2.1) # 1359.542
 
+
+# This shows that test2.1 is the most significant, followed by newtest
+anova(newtest, newtest1, newtest2, test3, test2, test2.1)
+
+
+
+#### Exploratory GLMMs ####
+# Nesting date within the interactions between site, reach, and location
+# Replicate is a random factor.
+Nested_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Date/(Site*Reach*Location) + (1|Replicate),
+                    data = Benthic_data,
+                    family = Gamma(link="log"))
+
+plot(Nested_BPOC_GLMM)
+Anova(Nested_BPOC_GLMM)
+AICc(Nested_BPOC_GLMM) # 1443.321
+AIC(Nested_BPOC_GLMM) #1382.521
+
+Nested_BPOC_GLMM1 <- glmer(Total_BPOC_Mass_per_Area ~ Date:Site:Reach + 
+                             Date:Location + Date:Reach + Date:Site + Date + (1|Replicate),
+                      data = Benthic_data,
+                      family = Gamma(link="log"))
+plot(Nested_BPOC_GLMM1)
+Anova(Nested_BPOC_GLMM1)
+AICc(Nested_BPOC_GLMM1) # 1375.041
+AIC(Nested_BPOC_GLMM1) #1364.641
+
+# Testing out different ways of nesting 
+test <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location*Date + (1|Replicate),
+              data = Benthic_data, 
+              family = Gamma(link="log"))
+plot(test)
+Anova(test)
+AICc(test)  # 1443.321
+AIC(test) # 1382.521
+
+# No date
+# All interactions are significant *** 
+# Cannot be reduced further
+test1 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(test1)
+Anova(test1)
+AICc(test1)  # 1404.622
+AIC(test1) # 1398.664
+
+# This has a 4-way interaction, all interactions are significant but AIC are higher
 test4 <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach/Location + (1|Replicate),
                data = Benthic_data, 
                family = Gamma(link="log"))
@@ -209,36 +268,10 @@ Anova(test4)
 AICc(test4)  # 1443.321
 AIC(test) # 1382.521
 
-# b_glm <- glmer(Total_BPOC_Mass_per_Area ~ Reach + (1|Replicate),
-#                data = Benthic_data, 
-#                family = Gamma(link="log"))
-# 
-# plot(b_glm)
-# Anova(b_glm)
-# AICc(b_glm)  
-# AIC(b_glm)
-# 
-# b_glm1 <- glmer(Total_BPOC_Mass_per_Area ~ Reach + Site + (1|Replicate),
-#                data = Benthic_data, 
-#                family = Gamma(link="log"))
-# 
-# plot(b_glm1)
-# Anova(b_glm1)
-# AICc(b_glm1)  
-# AIC(b_glm1)
-# 
-# b_glm2 <- glmer(Total_BPOC_Mass_per_Area ~ Reach + Site + Location + Date + (1|Replicate),
-#                 data = Benthic_data, 
-#                 family = Gamma(link="log"))
-# 
-# plot(b_glm2)
-# Anova(b_glm2)
-# AICc(b_glm2)  
-# AIC(b_glm2)
-
+### Full interaction models ###
 Full_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Site*Reach*Location*Date + (1|Replicate),
-                   data = Benthic_data, 
-                   family = Gamma(link="log"))
+                        data = Benthic_data, 
+                        family = Gamma(link="log"))
 
 plot(Full_BPOC_GLMM)
 Anova(Full_BPOC_GLMM)
@@ -249,8 +282,8 @@ AIC(Full_BPOC_GLMM) #1382.521
 Full_BPOC_GLMM1 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Date + Site:Reach:Location + 
                            Location:Date + Site:Date + Site:Location + Site:Reach + Date + Location + 
                            Site + (1|Replicate),
-                   data = Benthic_data, 
-                   family = Gamma(link="log"))
+                         data = Benthic_data, 
+                         family = Gamma(link="log"))
 plot(Full_BPOC_GLMM1)
 Anova(Full_BPOC_GLMM1)
 AICc(Full_BPOC_GLMM1) # 1381.962
@@ -258,8 +291,8 @@ AIC(Full_BPOC_GLMM1) #1360.65
 
 # Reducing
 Full_BPOC_GLMM1.1 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Location + Location:Date + Site:Date + Site:Location + Site:Reach + Date + Location + Site + (1|Replicate),
-                    data = Benthic_data, 
-                    family = Gamma(link="log"))
+                           data = Benthic_data, 
+                           family = Gamma(link="log"))
 plot(Full_BPOC_GLMM1.1)
 Anova(Full_BPOC_GLMM1.1)
 AICc(Full_BPOC_GLMM1.1) # 1372.867
@@ -267,8 +300,8 @@ AIC(Full_BPOC_GLMM1.1) # 1358.669
 
 # Reducing
 Full_BPOC_GLMM1.2 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Location + Site:Date + Site:Location + Site:Reach + Date + Location + Site + (1|Replicate),
-                      data = Benthic_data, 
-                      family = Gamma(link="log"))
+                           data = Benthic_data, 
+                           family = Gamma(link="log"))
 plot(Full_BPOC_GLMM1.2)
 Anova(Full_BPOC_GLMM1.2)
 AICc(Full_BPOC_GLMM1.2) # 1369.942
@@ -282,25 +315,39 @@ Anova(Full_BPOC_GLMM1.3)
 AICc(Full_BPOC_GLMM1.3) # 1366.942
 AIC(Full_BPOC_GLMM1.3) # 1362.542
 
-# # Trying to nest date within this model
-# Nested_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Date/(Site*Reach*Location) + (1|Replicate),
-#                     data = Benthic_data,
-#                     family = Gamma(link="log"))
-# 
-# plot(Nested_BPOC_GLMM)
-# Anova(Nested_BPOC_GLMM)
-# AICc(Nested_BPOC_GLMM) # 1443.321
-# AIC(Nested_BPOC_GLMM) #1382.521
-# 
-# Nested_BPOC_GLMM1 <- glmer(Total_BPOC_Mass_per_Area ~ Date:Site:Reach + Date:Location + Date:Reach + Date:Site + Date + (1|Replicate),
-#                       data = Benthic_data,
-#                       family = Gamma(link="log"))
-# plot(Nested_BPOC_GLMM1)
-# Anova(Nested_BPOC_GLMM1)
-# AICc(Nested_BPOC_GLMM1) # 1375.041
-# AIC(Nested_BPOC_GLMM1) #1364.641
 
-###
+### Main-effects models ###
+# Building models up from simple to more complex with no interactions
+b_glm <- glmer(Total_BPOC_Mass_per_Area ~ Reach + (1|Replicate),
+               data = Benthic_data,
+               family = Gamma(link="log"))
+
+plot(b_glm)
+Anova(b_glm)
+AICc(b_glm) # 1440.214
+AIC(b_glm) # 1439.959
+
+b_glm1 <- glmer(Total_BPOC_Mass_per_Area ~ Reach + Site + (1|Replicate),
+               data = Benthic_data,
+               family = Gamma(link="log"))
+
+plot(b_glm1)
+Anova(b_glm1)
+AICc(b_glm1) # 1432.186
+AIC(b_glm1) # 1431.644
+
+b_glm2 <- glmer(Total_BPOC_Mass_per_Area ~ Reach + Site + Location + Date + (1|Replicate),
+                data = Benthic_data,
+                family = Gamma(link="log"))
+
+plot(b_glm2)
+Anova(b_glm2)
+AICc(b_glm2) # 1406.561
+AIC(b_glm2) # 1405.104
+
+
+#### Post-hoc tests ####
+
 benthic_model <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + Date + (1|Replicate),
                data = Benthic_data, 
                family = Gamma(link="log"),
@@ -312,7 +359,7 @@ Full_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Site*Reach*Location*Date + (1
                         family = Gamma(link="log"))
 
 
-# Heres what I want to compare
+### Emmeans
 benthic_emm1 <- emmeans(benthic_model, ~ Reach|Site|Location,
                         nesting = "Reach %in% Site, Location %in% (Reach*Site)", 
                        type= "response")
@@ -326,8 +373,11 @@ benthic_glmm_emm <- emmeans(Full_BPOC_GLMM1.3, ~ Reach|Site|Location,
 newtest1_emm <- emmeans(newtest1, ~ Reach*Site*Date, 
                         type = "response")
 
-###
-# Emmean
+newtest2_emm <- emmeans(newtest2, ~ Reach*Site*Date, 
+                        type = "response")
+
+### CLD
+
 site_cld <- cld(benthic_emm1,
                 by = NULL,
                       alpha = 0.05, 
@@ -346,6 +396,12 @@ reach_cld <- cld(newtest1_emm,
 reach_cld$.group = gsub(" ", "", reach_cld$.group)
 reach_cld <- arrange(site_cld, Reach, Location, Site)
 
+reach_cld2 <- cld(newtest2_emm,
+                 by = c("Site", "Date"),
+                 alpha = 0.05, 
+                 Letters = letters,
+                 decreasing = TRUE)
+
 ###
 location_cld <- cld(benthic_emm1, 
                     by = NULL, 
@@ -358,7 +414,8 @@ location_cld <- arrange(site_cld, Reach, Location, Site)
 
 reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
 
-#### PLOTS
+#### PLOTS ####
+# This first plot is for presentations - simplified. 
 ggplot() +
   geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
   # geom_point(data = reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
