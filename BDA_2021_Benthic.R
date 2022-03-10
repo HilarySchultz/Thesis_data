@@ -348,33 +348,9 @@ AIC(b_glm2) # 1405.104
 
 #### Post-hoc tests ####
 
-benthic_model <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + Date + (1|Replicate),
-               data = Benthic_data, 
-               family = Gamma(link="log"),
-               control = glmerControl(optimizer = "bobyqa"))
-Anova(benthic_model)
-
-Full_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Site*Reach*Location*Date + (1|Replicate),
-                        data = Benthic_data, 
-                        family = Gamma(link="log"))
-
-
 ### Emmeans
-benthic_emm1 <- emmeans(benthic_model, ~ Reach|Site|Location,
-                        nesting = "Reach %in% Site, Location %in% (Reach*Site)", 
-                       type= "response")
-
-benthic_emm2 <- emmeans(benthic_model, pairwise ~ Reach|Site|Location,
-                        type= "response")
-
-benthic_glmm_emm <- emmeans(Full_BPOC_GLMM1.3, ~ Reach|Site|Location,
-                            type = "response")
-
-newtest1_emm <- emmeans(newtest1, ~ Reach*Site*Date, 
-                        type = "response")
-
-newtest2_emm <- emmeans(newtest2, ~ Reach*Site*Date, 
-                        type = "response")
+benthic_emm <- emmeans(test2.1, ~ Reach|Site|Date,
+                       type = "response")
 
 ### CLD
 
@@ -396,7 +372,7 @@ reach_cld <- cld(newtest1_emm,
 reach_cld$.group = gsub(" ", "", reach_cld$.group)
 reach_cld <- arrange(site_cld, Reach, Location, Site)
 
-reach_cld2 <- cld(newtest2_emm,
+reach_cld2 <- cld(benthic_emm,
                  by = c("Site", "Date"),
                  alpha = 0.05, 
                  Letters = letters,
