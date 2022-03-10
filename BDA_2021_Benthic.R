@@ -353,42 +353,36 @@ benthic_emm <- emmeans(test2.1, ~ Reach|Site|Date,
                        type = "response")
 
 ### CLD
-
-site_cld <- cld(benthic_emm1,
-                by = NULL,
-                      alpha = 0.05, 
-                      Letters = letters)
-
-site_cld$.group = gsub(" ", "", site_cld$.group)
-site_cld <- arrange(site_cld, Reach, Location, Site)
-
-###
-reach_cld <- cld(newtest1_emm,
-                by = c("Site", "Date"),
-                alpha = 0.05, 
-                Letters = letters,
-                decreasing = TRUE)
-
-reach_cld$.group = gsub(" ", "", reach_cld$.group)
-reach_cld <- arrange(site_cld, Reach, Location, Site)
-
-reach_cld2 <- cld(benthic_emm,
+reach_cld <- cld(benthic_emm,
                  by = c("Site", "Date"),
                  alpha = 0.05, 
                  Letters = letters,
                  decreasing = TRUE)
+reach_cld$.group = gsub(" ", "", reach_cld$.group)
+reach_cld <- arrange(reach_cld, Reach, Site, Date)
+
+# Asterisks
+# reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
 
 ###
-location_cld <- cld(benthic_emm1, 
-                    by = NULL, 
+# This gets screwy for some reason
+site_cld <- cld(benthic_emm,
+                by = c("Reach", "Date"),
+                      alpha = 0.05, 
+                      Letters = letters)
+
+site_cld$.group = gsub(" ", "", site_cld$.group)
+site_cld <- arrange(site_cld, Reach, Date, Site)
+
+###
+date_cld <- cld(benthic_emm, 
+                    by = c("Reach", "Site"), 
                     alpha = 0.05, 
                     Letters = letters)
 
-location_cld$.group = gsub(" ", "", location_cld$.group)
-location_cld <- arrange(site_cld, Reach, Location, Site)
+date_cld$.group = gsub(" ", "", date_cld$.group)
+date_cld <- arrange(date_cld, Reach, Site, Date)
 
-
-reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
 
 #### PLOTS ####
 # This first plot is for presentations - simplified. 
@@ -414,5 +408,26 @@ ggplot() +
   facet_grid(Date~Site) 
   
 #rep(-1.8, 5), 2, rep(-1.8, 5)
-  
-                                 
+
+
+### Refined plot ###  
+ggplot() +
+  geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
+  geom_point(data = reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
+             color = "blue") +
+  geom_text(data = reach_cld, aes(x = Reach, y = response, label= .group,
+                                  vjust = -2.2, hjust = 0.5),
+            size = 5, position = position_dodge(0.5), color = "black") +
+  geom_text(aes()) +
+  # scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
+  scale_fill_brewer(palette = "Spectral", name = "Reach", labels = c("BDA", "Reference")) +
+  labs(title = "Benthic Particulate Organic Carbon Pools", 
+       x = NULL, 
+       y = expression(BPOC~(g~C~m^-2))) +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  theme(axis.text = element_text(size = 12)) +
+  facet_grid(Date~Site)                                  
