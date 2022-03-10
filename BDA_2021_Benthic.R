@@ -1,14 +1,26 @@
-# library(Rmisc)
-library(dplyr)
-library(tidyverse)
-# library(lme4)
-# library(lsmeans)
+# # library(Rmisc)
+# library(dplyr)
+# library(tidyverse)
+# # library(lme4)
+# # library(lsmeans)
 # library(car)
-# library(readtext)
-# library(vroom)
-library(lubridate)
+# # library(readtext)
+# # library(vroom)
+# library(lubridate)
 
-#### BENTHIC ####
+library(multcomp) # for doing elegant pairwise comparisons
+library(Rmisc)  # for summarySE function to summarize data frame
+library(boot) # for diagnostics for GLM
+library(lme4)   # for linear, general, and nonlinear mixed models
+library(car)    # for doing ANOVA
+library(emmeans) # posthoc tests
+library(multcompView) # making posthoc tests easier to view and plot
+library(AICcmodavg) # for comparing models
+library(PerformanceAnalytics) # for making amazing correlation plots
+library(tidyverse)  # loads several useful packages, including ggplot2, 
+# tidyr, and dplyr
+
+#### BENTHIC CALCULATIONS ####
 
 # Reading in FBPOC data and doing the calculations to compare to google sheets
 # Final calculations: Jaunary 2022
@@ -93,8 +105,27 @@ Benthic_data <- full_join(CBPOC_data, FBPOC_data) %>% # Coarse with fine samples
          "SBPOC_Carbon_Mass_per_Area", "FBPOC_Carbon_Mass_per_Area") %>%
   mutate(Total_BPOC_Mass_per_Area = BPOC_Carbon_Mass_per_Area + SBPOC_Carbon_Mass_per_Area + FBPOC_Carbon_Mass_per_Area)
 
+# Need to change dates so that they represent the three sampling trips (June, July, August)
+Benthic_data <- Benthic_data %>%
+  mutate(Date = case_when(Date == "6/14/2021" ~ "June", 
+                          Date == "6/15/2021" ~ "June", 
+                          Date == "6/17/2021" ~ "June", 
+                          Date == "7/5/2021" ~ "July",
+                          Date == "7/6/2021" ~ "July", 
+                          Date == "7/8/2021" ~ "July",
+                          Date == "8/2/2021" ~ "August",
+                          Date == "8/3/2021" ~ "August",
+                          Date == "8/5/2021" ~ "August"))
+
 # write.csv(Benthic_data, "Benthic_data", row.names = F)
 
+#### Simple Plots ####
+# Histogram to see the distribution of the data
+Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) +
+  geom_histogram(binwidth = 10) +
+  facet_grid(rows = vars(Reach)) 
+
+# Boxplots for SE presentation
 Benthic_data %>% group_by(Site, Date, Reach, Location) %>% summarise(AvgBPOC= mean(Total_BPOC_Mass_per_Area)) %>%
   ggplot(aes(Site, AvgBPOC, fill = Site)) + geom_boxplot() +
   stat_summary(fun = mean, geom = "point", shape = 20, size = 2, color = "blue", fill = "blue") +
@@ -105,23 +136,250 @@ Benthic_data %>% group_by(Site, Date, Reach, Location) %>% summarise(AvgBPOC= me
   facet_grid(cols = vars((Reach))) +
   scale_y_continuous(limits = c(0,120), breaks = c(0,15,30,45,60,75,90,105,120))
 
-# Looking at the distribution
-# Benthic_data %>% ggplot() + geom_histogram(aes(Total_BPOC_Mass_per_Area), binwidth = 2)
-# Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) + geom_histogram() + facet_grid(Site ~ Reach) + 
-#   stat_bin(bins = 50) +
-#   theme(axis.text.x = element_text(angle = 45))
 
-## GLM for CBPOC
-BPOC_glm1 <- glm(Total_BPOC_Mass_per_Area ~ Site*Reach*Location*Date, data = Benthic_data, family = Gamma(link="log"))
-Anova(BPOC_glm1) # No interactions were significant. Only Reach, Location, Replicate, and Date have a p-value < 0.5 
-AIC(BPOC_glm1) # 1295.187
 
-BPOC_glm2 <- glm(Total_BPOC_Mass_per_Area ~ Reach + Location + Replicate + Date, data = Benthic_data, family = Gamma(link="log") )
-Anova(BPOC_glm2) # Now location is the least significant
-AIC(BPOC_glm2) # 1314.862
+#### Models for Benthic Data ####
+# Changing the class of each variable. Categorical variables enter into R differently than continuous variables
+# storing data as factors insures taht the modeling functions will treat such data correctly. 
+# Factors in R are stored as a vector of integer values with a corresponding set of character values to use
+# when the factor is displayed. Factors levels are always character values. 
 
-BPOC_glm3 <- glm(Total_BPOC_Mass_per_Area ~ Reach + Replicate + Date, data = Benthic_data, family = Gamma(link="log") )
-Anova(BPOC_glm3) 
-AIC(BPOC_glm3) # 1321.015
+# Changing Site, Reach, Location, and Date to ordered factors, and Replicate
+Benthic_data[,1:5] <- lapply(Benthic_data[,1:5], as.ordered)
 
-anova(BPOC_glm1, BPOC_glm2, BPOC_glm3)
+
+#### Full GLMM Model ####
+newtest <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach*Date + (1|Location) + (1|Replicate),
+              data = Benthic_data, 
+              family = Gamma(link="log"))
+plot(newtest)
+Anova(newtest)
+AICc(newtest)  # 1373.346
+AIC(newtest) # 1366.746
+
+newtest1 <- glmer(Total_BPOC_Mass_per_Area ~ 
+                    Site:Date + Site:Reach + Date + Site +
+                    (1|Location) + (1|Replicate),
+                 data = Benthic_data, 
+                 family = Gamma(link="log"))
+plot(newtest1)
+Anova(newtest1)
+AICc(newtest1)  # 1369.576
+AIC(newtest1) # 1366.288
+
+
+test <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location*Date + (1|Replicate),
+                        data = Benthic_data, 
+                        family = Gamma(link="log"))
+plot(test)
+Anova(test)
+AICc(test)  # 1443.321
+AIC(test) # 1382.521
+
+test1 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + (1|Replicate),
+              data = Benthic_data, 
+              family = Gamma(link="log"))
+plot(test1)
+Anova(test1)
+AICc(test1)  # 1404.622
+AIC(test1) # 1398.664
+
+
+test2 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach*Date + Site/Reach/Location + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(test2)
+Anova(test2)
+AICc(test2)  # 1377.408
+AIC(test2) # 1361.036
+
+test3 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + Date + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(test3)
+Anova(test3)
+AICc(test3)  # 1374.342
+AIC(test3) # 1367.061
+
+test4 <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach/Location + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(test4)
+Anova(test4)
+AICc(test4)  # 1443.321
+AIC(test) # 1382.521
+
+# b_glm <- glmer(Total_BPOC_Mass_per_Area ~ Reach + (1|Replicate),
+#                data = Benthic_data, 
+#                family = Gamma(link="log"))
+# 
+# plot(b_glm)
+# Anova(b_glm)
+# AICc(b_glm)  
+# AIC(b_glm)
+# 
+# b_glm1 <- glmer(Total_BPOC_Mass_per_Area ~ Reach + Site + (1|Replicate),
+#                data = Benthic_data, 
+#                family = Gamma(link="log"))
+# 
+# plot(b_glm1)
+# Anova(b_glm1)
+# AICc(b_glm1)  
+# AIC(b_glm1)
+# 
+# b_glm2 <- glmer(Total_BPOC_Mass_per_Area ~ Reach + Site + Location + Date + (1|Replicate),
+#                 data = Benthic_data, 
+#                 family = Gamma(link="log"))
+# 
+# plot(b_glm2)
+# Anova(b_glm2)
+# AICc(b_glm2)  
+# AIC(b_glm2)
+
+Full_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Site*Reach*Location*Date + (1|Replicate),
+                   data = Benthic_data, 
+                   family = Gamma(link="log"))
+
+plot(Full_BPOC_GLMM)
+Anova(Full_BPOC_GLMM)
+AICc(Full_BPOC_GLMM) # 1443.321
+AIC(Full_BPOC_GLMM) #1382.521
+
+# Reducing
+Full_BPOC_GLMM1 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Date + Site:Reach:Location + 
+                           Location:Date + Site:Date + Site:Location + Site:Reach + Date + Location + 
+                           Site + (1|Replicate),
+                   data = Benthic_data, 
+                   family = Gamma(link="log"))
+plot(Full_BPOC_GLMM1)
+Anova(Full_BPOC_GLMM1)
+AICc(Full_BPOC_GLMM1) # 1381.962
+AIC(Full_BPOC_GLMM1) #1360.65
+
+# Reducing
+Full_BPOC_GLMM1.1 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Location + Location:Date + Site:Date + Site:Location + Site:Reach + Date + Location + Site + (1|Replicate),
+                    data = Benthic_data, 
+                    family = Gamma(link="log"))
+plot(Full_BPOC_GLMM1.1)
+Anova(Full_BPOC_GLMM1.1)
+AICc(Full_BPOC_GLMM1.1) # 1372.867
+AIC(Full_BPOC_GLMM1.1) # 1358.669
+
+# Reducing
+Full_BPOC_GLMM1.2 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Location + Site:Date + Site:Location + Site:Reach + Date + Location + Site + (1|Replicate),
+                      data = Benthic_data, 
+                      family = Gamma(link="log"))
+plot(Full_BPOC_GLMM1.2)
+Anova(Full_BPOC_GLMM1.2)
+AICc(Full_BPOC_GLMM1.2) # 1369.942
+AIC(Full_BPOC_GLMM1.2) # 1359.542
+
+Full_BPOC_GLMM1.3 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Date + Site:Reach + Date + Location + Site + (1|Replicate),
+                           data = Benthic_data, 
+                           family = Gamma(link="log"))
+plot(Full_BPOC_GLMM1.3)
+Anova(Full_BPOC_GLMM1.3)
+AICc(Full_BPOC_GLMM1.3) # 1366.942
+AIC(Full_BPOC_GLMM1.3) # 1362.542
+
+# # Trying to nest date within this model
+# Nested_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Date/(Site*Reach*Location) + (1|Replicate),
+#                     data = Benthic_data,
+#                     family = Gamma(link="log"))
+# 
+# plot(Nested_BPOC_GLMM)
+# Anova(Nested_BPOC_GLMM)
+# AICc(Nested_BPOC_GLMM) # 1443.321
+# AIC(Nested_BPOC_GLMM) #1382.521
+# 
+# Nested_BPOC_GLMM1 <- glmer(Total_BPOC_Mass_per_Area ~ Date:Site:Reach + Date:Location + Date:Reach + Date:Site + Date + (1|Replicate),
+#                       data = Benthic_data,
+#                       family = Gamma(link="log"))
+# plot(Nested_BPOC_GLMM1)
+# Anova(Nested_BPOC_GLMM1)
+# AICc(Nested_BPOC_GLMM1) # 1375.041
+# AIC(Nested_BPOC_GLMM1) #1364.641
+
+###
+benthic_model <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location + Date + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"),
+               control = glmerControl(optimizer = "bobyqa"))
+Anova(benthic_model)
+
+Full_BPOC_GLMM <- glmer(Total_BPOC_Mass_per_Area ~ Site*Reach*Location*Date + (1|Replicate),
+                        data = Benthic_data, 
+                        family = Gamma(link="log"))
+
+
+# Heres what I want to compare
+benthic_emm1 <- emmeans(benthic_model, ~ Reach|Site|Location,
+                        nesting = "Reach %in% Site, Location %in% (Reach*Site)", 
+                       type= "response")
+
+benthic_emm2 <- emmeans(benthic_model, pairwise ~ Reach|Site|Location,
+                        type= "response")
+
+benthic_glmm_emm <- emmeans(Full_BPOC_GLMM1.3, ~ Reach|Site|Location,
+                            type = "response")
+
+newtest1_emm <- emmeans(newtest1, ~ Reach*Site*Date, 
+                        type = "response")
+
+###
+# Emmean
+site_cld <- cld(benthic_emm1,
+                by = NULL,
+                      alpha = 0.05, 
+                      Letters = letters)
+
+site_cld$.group = gsub(" ", "", site_cld$.group)
+site_cld <- arrange(site_cld, Reach, Location, Site)
+
+###
+reach_cld <- cld(newtest1_emm,
+                by = c("Site", "Date"),
+                alpha = 0.05, 
+                Letters = letters,
+                decreasing = TRUE)
+
+reach_cld$.group = gsub(" ", "", reach_cld$.group)
+reach_cld <- arrange(site_cld, Reach, Location, Site)
+
+###
+location_cld <- cld(benthic_emm1, 
+                    by = NULL, 
+                    alpha = 0.05, 
+                    Letters = letters)
+
+location_cld$.group = gsub(" ", "", location_cld$.group)
+location_cld <- arrange(site_cld, Reach, Location, Site)
+
+
+reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
+
+#### PLOTS
+ggplot() +
+  geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
+  # geom_point(data = reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
+  #            color = "blue") +
+  geom_text(data = reach_cld, aes(x = Reach, y = response, label= .group,
+                                       vjust = -2.1, hjust = 0.5),
+            size = 6, position = position_dodge(0.5), color = "red") +
+  geom_text(aes()) +
+  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
+  # scale_fill_brewer(palette = "Spectral") +
+  labs(title = "Benthic Particulate Organic Carbon Pools", 
+       x = NULL, 
+       y = expression(BPOC~(g~C/m^2))) +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  theme(axis.text = element_text(size = 12)) +
+  facet_grid(Date~Site) 
+  
+#rep(-1.8, 5), 2, rep(-1.8, 5)
+  
+                                 
