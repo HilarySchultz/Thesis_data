@@ -9,6 +9,7 @@ library(AICcmodavg) # for comparing models
 library(PerformanceAnalytics) # for making amazing correlation plots
 library(tidyverse)  # loads several useful packages, including ggplot2, 
 # tidyr, and dplyr
+library(lubridate)
 
 #### DOC #### 
 DOC <- read.csv("DOC_Data.csv", header = T, sep = ",") %>% 
@@ -333,7 +334,7 @@ geom_line(aes(x = Date,
   scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
   labs(title = "Dissolved Organic Carbon Concentrations", 
        x = "Date", 
-       y = "Estimated Marginal Means") +
+       y = expression(Concentration~(mg~C~L^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
@@ -471,7 +472,7 @@ ggplot(data = spoc_emm_sum) +
   scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
   labs(title = "Particulate Organic Carbon Concentrations", 
        x = "Date", 
-       y = expression(Concentration~(g~C~ml^-1))) +
+       y = expression(Concentration~(mg~C~L^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
@@ -506,4 +507,54 @@ SPOC.glm3 <- glm(SPOC ~ Site*Reach*Replicate,
 SPOC.glm4 <- glm(SPOC ~ Site:Reach + Reach + Site, 
                  data = SPOC_data, 
                  family = Gamma(link = "log"))
+
+
+#### DOC SPOC Ratios ####
+DOC <- DOC_data %>%
+  select(Site, Reach, Replicate, Date, Conc_ppm) %>%
+  rename(DOC_conc = Conc_ppm)
+
+DOC$Date <- as.character(DOC$Date)
+
+
+SPOC <- SPOC_data %>%
+  select(Site, Reach, Replicate, Date, SPOC) %>%
+  rename(SPOC_conc = SPOC)
+SPOC$Date <- as.character(SPOC$Date)
+
+
+ratio_data <- inner_join(DOC, SPOC) %>%
+  mutate(TOC_conc = DOC_conc + SPOC_conc,
+         percent_DOC = DOC_conc/TOC_conc*100, 
+         percent_SPOC = SPOC_conc/TOC_conc*100) 
+  
+ratio_data_sum <- ratio_data %>%
+  group_by(Date, Site, Reach) %>%
+  summarise(meanSPOCpercent = mean(percent_SPOC), 
+            meanDOCpercent = mean(percent_DOC))
+
+test_DOC <- DOC %>%
+  add_column(Sample = "DOC") %>%
+  rename(Concentration = DOC_conc)
+
+test_SPOC <- SPOC %>%
+  add_column(Sample = "SPOC") %>%
+  rename(Concentration = SPOC_conc)
+
+test_OC_df <- full_join(test_DOC, test_SPOC) %>%
+  mutate(TOC_conc = DOC_conc + SPOC_conc,
+         percent_DOC = DOC_conc/TOC_conc*100, 
+         percent_SPOC = SPOC_conc/TOC_conc*100) 
+
+
+ratio_data_sum %>%
+  ggplot(aes(Date, fill = )) + 
+  geom_area(stat = "bin")
+
+
+
+
+
+
+
 
