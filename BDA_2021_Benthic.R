@@ -164,7 +164,7 @@ AIC(newtest) # 1366.746
 # All of these interactions and main effects are significant.
 # Cannot be reduced further
 newtest1 <- glmer(Total_BPOC_Mass_per_Area ~ 
-                    Site:Date + Site:Reach + Date + Site +
+                    Site + Date + Site/Reach + Site/Date +
                     (1|Location) + (1|Replicate),
                  data = Benthic_data, 
                  family = Gamma(link="log"))
@@ -172,6 +172,14 @@ plot(newtest1) # Bunched in the lower left-hand corner.
 Anova(newtest1) 
 AICc(newtest1)  # 1369.576
 AIC(newtest1) # 1366.288
+
+btest <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site + Reach + (1|Location) + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(btest) # Bunched in the lower left-hand corner. 
+Anova(btest)
+AICc(btest) # 1405.12
+AIC(btest) # 1402.661
 
 ### Full nested models ###
 # All interactions are significant. 
@@ -195,26 +203,10 @@ AICc(test3)  # 1374.342
 AIC(test3) # 1367.061
 
 
-test2 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach*Date + Site/Reach/Location + (1|Replicate),
-               data = Benthic_data, 
-               family = Gamma(link="log"))
-plot(test2)
-Anova(test2)
-AICc(test2)  # 1377.408
-AIC(test2) # 1361.036
-
-test2.1 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Location + Site:Date +
-                   Site:Reach + Date + Site + (1|Replicate),
-               data = Benthic_data, 
-               family = Gamma(link="log"))
-plot(test2.1)
-Anova(test2.1)
-AICc(test2.1)  # 1369.942
-AIC(test2.1) # 1359.542
 
 
 # This shows that test2.1 is the most significant, followed by newtest
-anova(newtest, newtest1, newtest2, test3, test2, test2.1)
+anova(newtest, newtest1, newtest2, test3, test2)
 
 
 
@@ -247,6 +239,24 @@ plot(test)
 Anova(test)
 AICc(test)  # 1443.321
 AIC(test) # 1382.521
+
+# We want location as a random factor. 
+test2 <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach*Date + Site/Reach/Location + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(test2)
+Anova(test2)
+AICc(test2)  # 1377.408
+AIC(test2) # 1361.036
+
+test2.1 <- glmer(Total_BPOC_Mass_per_Area ~ Site:Reach:Location + Site:Date +
+                   Site:Reach + Date + Site + (1|Replicate),
+                 data = Benthic_data, 
+                 family = Gamma(link="log"))
+plot(test2.1)
+Anova(test2.1)
+AICc(test2.1)  # 1369.942
+AIC(test2.1) # 1359.542
 
 # No date
 # All interactions are significant *** 
@@ -345,11 +355,18 @@ Anova(b_glm2)
 AICc(b_glm2) # 1406.561
 AIC(b_glm2) # 1405.104
 
+test4 <- glmer(Total_BPOC_Mass_per_Area ~ Site + Reach + Date + (1|Location) + (1|Replicate),
+               data = Benthic_data, 
+               family = Gamma(link="log"))
+plot(test4)
+Anova(test4)
+AICc(test4) 
+AIC(test4) 
 
 #### Post-hoc tests ####
 
 ### Emmeans
-benthic_emm <- emmeans(test2.1, ~ Reach|Site|Date,
+benthic_emm <- emmeans(newtest2, ~ Reach|Date|Site,
                        type = "response")
 
 ### CLD
