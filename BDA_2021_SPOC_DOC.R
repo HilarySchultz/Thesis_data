@@ -160,6 +160,16 @@ DOC_datetest3 <- glmer(Conc_ppm ~ Site/Reach/Date + (1|Replicate),
 plot(DOC_datetest3)
 Anova(DOC_datetest3)
 
+DOC_datetest4 <- glmer(Conc_ppm ~ Site + Reach + Date + (1|Replicate),
+                       data = DOC_data, 
+                       family = Gamma(link = "log"))
+DOC_datetest5 <- glmer(Conc_ppm ~ Site + Reach + (1|Date) + (1|Replicate),
+                       data = DOC_data, 
+                       family = Gamma(link = "log"))
+DOC_datetest6 <- glmer(Conc_ppm ~ Date/Site + Reach + (1|Replicate),
+                       data = DOC_data, 
+                       family = Gamma(link = "log"))
+
 #### Exploratory/Bad DOC GLMs ####
 DOC_fullglm <- glm(Conc_ppm ~ Date*Site*Reach*Replicate, 
                    data = DOC_data,
@@ -545,7 +555,7 @@ anova(SPOC_nested, SPOC_nested1, SPOC_nested2, SPOC_GLMM4)
 anova(spoctest, spoctest2, spoctest3)
 
 #### Post-hoc Tests ####
-spoc_emm <- emmeans(spoctest, ~ Reach|Site|Date,
+spoc_emm <- emmeans(SPOC_GLMM4, ~ Reach|Site|Date,
                    type = "response")
 
 spoc_emm_sum <- summary(spoc_emm)
