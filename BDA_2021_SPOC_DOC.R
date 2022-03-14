@@ -464,6 +464,35 @@ plot(SPOC_nested)
 AIC(SPOC_nested) # -100.7296
 AICc(SPOC_nested) # -49.301
 
+# Response: SPOC
+# Chisq Df Pr(>Chisq)    
+# Date            155.04  6  < 2.2e-16 ***
+#   Date:Site       472.28 14  < 2.2e-16 ***
+#   Date:Site:Reach 241.90 21  < 2.2e-16 ***
+
+SPOC_nested1 <- glmer(SPOC ~ Date/Site + Reach + (1|Replicate),
+                     data = SPOC_data, 
+                     family = Gamma(link = "log"))
+Anova(SPOC_nested1)
+plot(SPOC_nested1)
+AIC(SPOC_nested1) # -28.56463
+AICc(SPOC_nested1) # -16.1935
+
+# Response: SPOC
+# Chisq Df Pr(>Chisq)    
+# Date       80.035  6  3.515e-15 ***
+#   Reach      11.106  1  0.0008606 ***
+#   Date:Site 199.946 14  < 2.2e-16 ***
+
+
+SPOC_nested2 <- glmer(SPOC ~ Date/Site/(1|Replicate) + Reach,
+                      data = SPOC_data, 
+                      family = Gamma(link = "log"))
+Anova(SPOC_nested2)
+plot(SPOC_nested2)
+AIC(SPOC_nested2) # -28.56463
+AICc(SPOC_nested2) # -16.1935
+
 SPOC_GLMM4 <- glmer(SPOC ~ Date/Site/Reach/(1|Replicate),
                     data = SPOC_data, 
                     family = Gamma(link = "log"))
@@ -471,6 +500,12 @@ Anova(SPOC_GLMM4)
 plot(SPOC_GLMM4)
 AIC(SPOC_GLMM4) # -100.7296
 AICc(SPOC_GLMM4) # -49.301
+
+# Response: SPOC
+# Chisq Df Pr(>Chisq)    
+# Date            155.04  6  < 2.2e-16 ***
+#   Date:Site       472.28 14  < 2.2e-16 ***
+#   Date:Site:Reach 241.90 21  < 2.2e-16 ***
 
 spoctest <- SPOC_nested <- glm(SPOC ~ Date/Site/Reach,
                                  data = SPOC_data, 
@@ -480,6 +515,34 @@ plot(spoctest)
 Anova(spoctest)
 AIC(spoctest) # -100.7296
 AICc(spoctest) # -52.22545
+
+# Response: SPOC
+# LR Chisq Df Pr(>Chisq)    
+# Date              127.76  6  < 2.2e-16 ***
+#   Date:Site         323.29 14  < 2.2e-16 ***
+#   Date:Site:Reach   134.76 21  < 2.2e-16 ***
+
+spoctest2 <- SPOC_nested <- glm(SPOC ~ Date/Site + Reach,
+                               data = SPOC_data, 
+                               family = Gamma(link = "log"))
+par(mfrow = c(2,2))
+plot(spoctest2)
+Anova(spoctest2)
+AIC(spoctest2) # -32.33628
+AICc(spoctest2) # -21.07098
+
+spoctest3 <- SPOC_nested <- glm(SPOC ~ Date/Site*Reach,
+                                data = SPOC_data, 
+                                family = Gamma(link = "log"))
+par(mfrow = c(2,2))
+plot(spoctest3)
+Anova(spoctest3)
+AIC(spoctest3) # -100.7296
+AICc(spoctest3) # -52.22545
+
+# Not helpful
+anova(SPOC_nested, SPOC_nested1, SPOC_nested2, SPOC_GLMM4)
+anova(spoctest, spoctest2, spoctest3)
 
 #### Post-hoc Tests ####
 spoc_emm <- emmeans(spoctest, ~ Reach|Site|Date,
