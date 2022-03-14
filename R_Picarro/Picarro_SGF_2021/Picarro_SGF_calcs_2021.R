@@ -53,12 +53,80 @@ slope_df <- slope_df %>%
 hist(slope_df$R2_CO2)
 plot(slope_df$R2_CO2, slope_df$R2_CH4)
 
-# Separting methane and carbon dioxide readings that are below a 0.9 R-squared value
+# Separting methane and carbon dioxide readings that are below a 0.8 R-squared value
+# Ben and I decided this was appropriate
+CO2_df <- slope_df %>%
+  select(-CH4_slope, -R2_CH4) %>%
+  filter(R2_CO2 >= 0.8)
 
-CO2_df <- slope_df %>% filter(R2_CO2 >= 0.9)
-CH4_df <- slope_df %>% filter(R2_CH4 >= 0.9)
+CO2_df_bad_omit <- slope_df %>%
+  select(-CH4_slope, -R2_CH4) %>%
+  filter(R2_CO2 < 0.8, CO2_slope >= 0)
+
+CH4_df <- slope_df %>%
+  select(-CO2_slope, -R2_CO2) %>%
+  filter(R2_CH4 >= 0.8)
+
+CH4_df_bad_omit <- slope_df %>%
+  select(-CO2_slope, -R2_CO2) %>%
+  filter(R2_CH4 < 0.8)
+
+# Taking out all the dates/sites/chambers that are wack and matching it with the raw values
+CO2_adjust <- inner_join(SGF_df, CO2_filter_df) %>%
+  select(-avg_deltaCO2, -avg_CH4, -avg_deltaCH4, -X) 
+
+first_conc <- CO2_adjust %>%
+  filter(Time != 65, Time != 35) %>%
+  mutate(avg_CO21 = avg_CO2, .keep = "unused") %>%
+  select(-Time)
+  
+second_conc <- CO2_adjust %>%
+  filter(Time != 65, Time != 5) %>%
+  mutate(avg_CO22 = avg_CO2, .keep = "unused") %>%
+  select(-Time)
+
+CO2_conc_wacky <- inner_join(first_conc, second_conc) %>%
+  mutate(high_initial = if_else(avg_CO21 >= avg_CO22, "TRUE", "FALSE"))
+
+CH4_adjust <- inner_join(SGF_df, CH4_filter_df) %>%
+  select(-avg_deltaCO2, -avg_CO2, -avg_deltaCH4, -X)
+
+first_concmeth <- CH4_adjust %>%
+  filter(Time != 65, Time != 35) %>%
+  mutate(avg_CH41 = avg_CH4, .keep = "unused") %>%
+  select(-Time)
+
+second_concmeth <- CH4_adjust %>%
+  filter(Time != 65, Time != 5) %>%
+  mutate(avg_CH42 = avg_CH4, .keep = "unused") %>%
+  select(-Time)
+
+CH4_conc_wacky <- inner_join(first_concmeth, second_concmeth) %>%
+  mutate(high_initial = if_else(avg_CH41 >= avg_CH42, "TRUE", "FALSE"))
+
+# Plotting up some data. 
+SGF_df %>%
+  filter(Date == "2021-06-07", Site == "LP", Chamber == 5, Reach == "BDA") %>%
+  ggplot(aes(Time, avg_CO2)) +
+  geom_point()
+
+SGF_df %>%
+  filter(Date == "2021-06-10", Site == "TP", Chamber == 5, Reach == "BDA") %>%
+  ggplot(aes(Time, avg_CO2)) +
+  geom_point()
+
+SGF_df %>%
+  filter(Date == "2021-06-10", Site == "TP", Chamber == 11, Reach == "REF") %>%
+  ggplot(aes(Time, avg_CO2)) +
+  geom_point()
+
+SGF_df %>%
+  filter(Date == "2021-07-27", Site == "FH", Chamber == 5, Reach == "BDA") %>%
+  ggplot(aes(Time, avg_CO2)) +
+  geom_point()
 
 
+#####
 ## GET SGF FIELD DATA ##
 chamber_data <- read.csv("../Flux_Chamber_Field_Data.csv", header = T, sep = ",")
 
@@ -111,11 +179,13 @@ CH4_data <- inner_join(CH4_df, field_data)
 map(CH4_data, ~sum(is.na(.)))
 
 # FLUX CALCULATIONS #
+# Using slope to calculate flux 
+# Slope is ppmv of gas per minute, which is microliters of gas per minute. 
 CO2_fluxes <- CO2_data %>%
   rowwise() %>%
   mutate(CO2am = (CO2_slope*12*Baro_pressure_atm)/(0.0821*(AvgTemp + 273))) %>%
   mutate(CO2_flux_micrograms = (CO2am*12.31*60)/0.062635) %>%
-  mutate(CO2_flux_g = CO2_flux_micrograms /1e+6)
+  mutate(CO2_flux_g = CO2_flux_micrograms*24/1e+6)
 
 CH4_fluxes <- CH4_data %>%
   rowwise() %>%
