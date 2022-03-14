@@ -77,7 +77,7 @@ DOC_data$transformed <- abs(DOC_data$Conc_ppm - mean(DOC_data$Conc_ppm))
 shapiro.test(DOC_data$transformed)
 hist(DOC_data$transformed)
 
-#### Exploratory/Bad GLMMs ####
+#### Exploratory/Bad DOC GLMMs ####
 
 # Models are singular - no good, overfitting.
 DOC_fullnested_trans <- glmer(transformed ~ Date/Site/Reach + (1|Replicate),
@@ -122,7 +122,7 @@ DOC_test <- glmer(Conc_ppm ~ Date/Site/Reach/(1|Replicate),
                   data = DOC_data, 
                   family = Gamma(link = "log"))
 
-# This is without Date. Only site is significant but still singular
+# This is without Date. Only site is significant but all these models are still singular
 DOC_fullnested4 <- glmer(Conc_ppm ~ Site/Reach + (1|Replicate),
                          data = DOC_data, 
                          family = Gamma(link = "log"))
@@ -141,10 +141,6 @@ DOC_test1 <- glmer(Conc_ppm ~ Site/Reach/(1|Replicate),
 plot(DOC_test1)
 Anova(DOC_test1)
 
-anova(DOC_fullnested4, DOC_fullnested5, DOC_test1)
-
-# This is only BDA and REF reach and Dates reordered correctly.
-# Trying to get date in the model - model is singular when everything is in date
 DOC_datetest1.1 <- glmer(Conc_ppm ~ Site/Reach + Date + (1|Replicate),
                          data = DOC_data, 
                          family = Gamma(link = "log"))
@@ -164,7 +160,7 @@ DOC_datetest3 <- glmer(Conc_ppm ~ Site/Reach/Date + (1|Replicate),
 plot(DOC_datetest3)
 Anova(DOC_datetest3)
 
-#### DOC GLMs ####
+#### Exploratory/Bad DOC GLMs ####
 DOC_fullglm <- glm(Conc_ppm ~ Date*Site*Reach*Replicate, 
                    data = DOC_data,
                    family = gaussian(link = "log"))
@@ -275,10 +271,26 @@ Anova(doctest1)
 AIC(doctest1) # 291.9806
 AICc(doctest1) # 305.0774
 
+doctest6 <- glm(Conc_ppm ~ Date/Site + Reach,
+                data = DOC_data, 
+                family = Gamma(link = "log"))
+par(mfrow = c(2,2))
+plot(doctest6)
+Anova(doctest6)
+AIC(doctest6) # 291.6785
+AICc(doctest6) # 305.8249
+
+
+# All other variations end up reducing down to Date:Site + Date
+
 #### Post-hoc tests ####
 doc_emm <- emmeans(doctest, ~ Reach|Site|Date,
                        type = "response")
 doc_emm_sum <- summary(doc_emm)
+
+doc_emm6 <- emmeans(doctest6, ~ Reach|Site|Date,
+                   type = "response")
+doc_emm_sum6 <- summary(doc_emm6)
 
 ### CLD
 doc_reach_cld <- cld(doc_emm,
@@ -288,6 +300,14 @@ doc_reach_cld <- cld(doc_emm,
                  decreasing = TRUE)
 doc_reach_cld$.group = gsub(" ", "", doc_reach_cld$.group)
 doc_reach_cld <- arrange(doc_reach_cld, Reach, Site, Date)
+
+doc_reach_cld6 <- cld(doc_emm6,
+                     by = c("Site", "Date"),
+                     alpha = 0.05, 
+                     Letters = letters,
+                     decreasing = TRUE)
+doc_reach_cld6$.group = gsub(" ", "", doc_reach_cld6$.group)
+doc_reach_cld6 <- arrange(doc_reach_cld6, Reach, Site, Date)
 
 
 #### DOC Box Plots ####
@@ -342,7 +362,32 @@ geom_line(aes(x = Date,
   facet_grid(vars(rows = Site)) 
 
 
-
+ggplot(data = doc_emm_sum6) +
+  geom_ribbon(aes(x = Date,
+                  ymin = asymp.LCL, 
+                  ymax = asymp.UCL,
+                  group = Reach,
+                  fill = Reach), 
+              alpha = 0.40, 
+              color = NA) + # opaqueness of the CI
+  # fill = "#3984ff") +
+  geom_line(aes(x = Date, 
+                y = response, 
+                group = Reach, 
+                color = Reach), 
+            lwd = 1) +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_color_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Dissolved Organic Carbon Concentrations", 
+       x = "Date", 
+       y = expression(Concentration~(mg~C~L^-1))) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black"), 
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  facet_grid(vars(rows = Site)) 
 
 #### SPOC #####
 
@@ -531,7 +576,9 @@ ratio_data <- inner_join(DOC, SPOC) %>%
 ratio_data_sum <- ratio_data %>%
   group_by(Date, Site, Reach) %>%
   summarise(meanSPOCpercent = mean(percent_SPOC), 
-            meanDOCpercent = mean(percent_DOC))
+            meanDOCpercent = mean(percent_DOC),
+            meanSPOCconc = mean(SPOC_conc), 
+            meanDOCconc = mean(DOC_conc))
 
 test_DOC <- DOC %>%
   add_column(Sample = "DOC") %>%
@@ -546,14 +593,11 @@ test_OC_df <- full_join(test_DOC, test_SPOC) %>%
          percent_DOC = DOC_conc/TOC_conc*100, 
          percent_SPOC = SPOC_conc/TOC_conc*100) 
 
-
-ratio_data_sum %>%
-  ggplot(aes(Date, fill = )) + 
-  geom_area(stat = "bin")
-
-
-
-
+test_OC_df %>%
+  filter(Sample == "SPOC") %>%
+  ggplot(aes(Concentration)) +
+  geom_histogram() + 
+  facet_grid(vars(rows = Site), vars(cols = Reach))
 
 
 
