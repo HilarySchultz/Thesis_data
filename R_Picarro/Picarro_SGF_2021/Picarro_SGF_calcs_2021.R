@@ -199,4 +199,9 @@ write.csv(CO2_fluxes,
 write.csv(CH4_fluxes, 
           file = "/Users/hilaryschultz/Desktop/Thesis/R_Picarro/Picarro_Analyses/CH4_fluxes.csv")
 
+write.csv(CO2_fluxes, 
+          file = "/Users/hilaryschultz/Desktop/Thesis/Thesis_Data/Thesis_Data/CO2_fluxes_final.csv")
+
+write.csv(CH4_fluxes, 
+          file = "/Users/hilaryschultz/Desktop/Thesis/Thesis_Data/Thesis_Data/CH4_fluxes_final.csv")
 
