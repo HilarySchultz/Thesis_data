@@ -88,7 +88,7 @@ Anova(docmodel)
 AIC(docmodel) # 358.2897
 AICc(docmodel) # 360.9085
 
-
+# This is the current working model 3/15/22
 docmodel1 <- glmer(Conc_ppm ~ Date + Reach + (1|Site),
                   data = DOC_data, 
                   family = Gamma(link = "log"))
@@ -110,6 +110,7 @@ summary(docmodel2)
 
 
 #### Post-hoc tests ####
+# Used in ribbon plot
 doc_emm_reach <- emmeans(docmodel1, ~ Reach|Date,
                        type = "response")
 doc_emm_reach_sum <- summary(doc_emm_reach)
@@ -120,8 +121,8 @@ doc_emm_date <- emmeans(docmodel1, ~ Date|Reach,
 doc_emm_date_sum <- summary(doc_emm_date)
 
 ##
-doc_rg <- ref_grid(docmodel1)
-doc_emm_reachtest1 <- emmeans(ref_grid(doc_rg), "source")
+# I think the regrid backtransforms the model, it wouldn't work otherwise.
+# Used in boxplot
 doc_emm_reachtest <- regrid(emmeans(docmodel1, ~ Reach|Reach,
                          type = "response"))
 doc_emm_reachtest_sum <- summary(doc_emm_reachtest)
@@ -137,7 +138,6 @@ doc_reach_cld$.group = gsub(" ", "", doc_reach_cld$.group)
 doc_reach_cld <- arrange(doc_reach_cld, Reach, Date)
 
 # Reach by Reach
-
 doc_reach_cldtest <- cld(doc_emm_reachtest,
                      by = "Reach",
                      alpha = 0.05, 
@@ -156,6 +156,7 @@ doc_date_cld$.group = gsub(" ", "", doc_date_cld$.group)
 doc_date_cld <- arrange(doc_date_cld, Reach, Date)
 
 #### DOC Box Plots ####
+comparisons <- list(c("BDA", "REF"))
 ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
   geom_boxplot(aes(fill = Reach)) +
   geom_point(data = doc_reach_cldtest, aes(x = Reach, y = response), size = 1, shape = 19,
@@ -174,10 +175,13 @@ ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
         # axis.text.x = element_blank(),
         axis.ticks.x = element_blank(), 
         legend.position = "none") +
-  scale_x_discrete(labels = c("Treatment", "Reference"))
+  scale_x_discrete(labels = c("Treatment", "Reference")) +
+  stat_compare_means(comparisons = comparisons)
+  stat_compare_means(lacel ="p.signif", method = "t.test", paired = F)
 
 #### DOC Ribbon Plot ####
-ggplot(data = doc_emm_sum) +
+# Template plot
+ggplot(data = doc_emm_reach_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
@@ -298,6 +302,29 @@ hist(SPOC_data$SPOC)
 #           Site = as.factor(ordered(Site, levels = c("LP", "FH", "TP"))), 
 #          Reach = as.factor(ordered(Reach, levels = c("DS", "BDA", "REF"))))
 
+spocmodel <- glmer(SPOC ~ Date + Reach + (1|Site) + (1|Replicate),
+                   data = SPOC_data, 
+                   family = Gamma(link = "log"))
+plot(spocmodel)
+Anova(spocmodel)
+AIC(spocmodel) # -11.07058
+AICc(spocmodel) # -8.670581
+
+# This is the same structure as the DOC model 
+spocmodel1 <- glmer(SPOC ~ Date + Reach + (1|Site),
+                   data = SPOC_data, 
+                   family = Gamma(link = "log"))
+plot(spocmodel1)
+Anova(spocmodel1)
+AIC(spocmodel1) # -13.06513
+AICc(spocmodel1) # -11.08315
+summary(spocmodel1)
+
+# Response: SPOC
+# Chisq Df Pr(>Chisq)    
+# Date  62.628  6  1.314e-11 ***
+# Reach 13.036  1  0.0003055 ***
+
 SPOC_nested <- glmer(SPOC ~ Date/Site/Reach + (1|Replicate),
                               data = SPOC_data, 
                               family = Gamma(link = "log"))
@@ -305,104 +332,44 @@ Anova(SPOC_nested)
 plot(SPOC_nested)
 AIC(SPOC_nested) # -100.7296
 AICc(SPOC_nested) # -49.301
-
+summary(SPOC_nested)
 # Response: SPOC
 # Chisq Df Pr(>Chisq)    
 # Date            155.04  6  < 2.2e-16 ***
-#   Date:Site       472.28 14  < 2.2e-16 ***
-#   Date:Site:Reach 241.90 21  < 2.2e-16 ***
-
-SPOC_nested1 <- glmer(SPOC ~ Date/Site + Reach + (1|Replicate),
-                     data = SPOC_data, 
-                     family = Gamma(link = "log"))
-Anova(SPOC_nested1)
-plot(SPOC_nested1)
-AIC(SPOC_nested1) # -28.56463
-AICc(SPOC_nested1) # -16.1935
-
-# Response: SPOC
-# Chisq Df Pr(>Chisq)    
-# Date       80.035  6  3.515e-15 ***
-#   Reach      11.106  1  0.0008606 ***
-#   Date:Site 199.946 14  < 2.2e-16 ***
-
-
-SPOC_nested2 <- glmer(SPOC ~ Date/Site/(1|Replicate) + Reach,
-                      data = SPOC_data, 
-                      family = Gamma(link = "log"))
-Anova(SPOC_nested2)
-plot(SPOC_nested2)
-AIC(SPOC_nested2) # -28.56463
-AICc(SPOC_nested2) # -16.1935
-
-SPOC_GLMM4 <- glmer(SPOC ~ Date/Site/Reach/(1|Replicate),
-                    data = SPOC_data, 
-                    family = Gamma(link = "log"))
-Anova(SPOC_GLMM4)
-plot(SPOC_GLMM4)
-AIC(SPOC_GLMM4) # -100.7296
-AICc(SPOC_GLMM4) # -49.301
-
-# Response: SPOC
-# Chisq Df Pr(>Chisq)    
-# Date            155.04  6  < 2.2e-16 ***
-#   Date:Site       472.28 14  < 2.2e-16 ***
-#   Date:Site:Reach 241.90 21  < 2.2e-16 ***
-
-spoctest <- SPOC_nested <- glm(SPOC ~ Date/Site/Reach,
-                                 data = SPOC_data, 
-                                 family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(spoctest)
-Anova(spoctest)
-AIC(spoctest) # -100.7296
-AICc(spoctest) # -52.22545
-
-# Response: SPOC
-# LR Chisq Df Pr(>Chisq)    
-# Date              127.76  6  < 2.2e-16 ***
-#   Date:Site         323.29 14  < 2.2e-16 ***
-#   Date:Site:Reach   134.76 21  < 2.2e-16 ***
-
-spoctest2 <- SPOC_nested <- glm(SPOC ~ Date/Site + Reach,
-                               data = SPOC_data, 
-                               family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(spoctest2)
-Anova(spoctest2)
-AIC(spoctest2) # -32.33628
-AICc(spoctest2) # -21.07098
-
-spoctest3 <- SPOC_nested <- glm(SPOC ~ Date/Site*Reach,
-                                data = SPOC_data, 
-                                family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(spoctest3)
-Anova(spoctest3)
-AIC(spoctest3) # -100.7296
-AICc(spoctest3) # -52.22545
-
-# Not helpful
-anova(SPOC_nested, SPOC_nested1, SPOC_nested2, SPOC_GLMM4)
-anova(spoctest, spoctest2, spoctest3)
+# Date:Site       472.28 14  < 2.2e-16 ***
+# Date:Site:Reach 241.90 21  < 2.2e-16 ***
 
 #### Post-hoc Tests ####
-spoc_emm <- emmeans(SPOC_GLMM4, ~ Reach|Site|Date,
+# Nested Model
+# For Ribbon plot
+spoc_nestedreach_emm <- emmeans(SPOC_nested, ~ Reach|Site|Date,
                    type = "response")
 
-spoc_emm_sum <- summary(spoc_emm)
+spoc_nestedreach_emm_sum <- summary(spoc_nestedreach_emm)
+
+# Non-nested model
+# For Ribbon plot
+spoc_reach_emm <- emmeans(spocmodel1, ~ Reach|Date,
+                                type = "response")
+
+spoc_reach_emm_sum <- summary(spoc_reach_emm)
+
+# For boxplot
+spoc_reach_boxemm <- regrid(emmeans(docmodel1, ~ Reach|Reach,
+                             type = "response"))
 
 ### CLD
-spoc_reach_cld <- cld(spoc_emm,
-                     by = c("Site", "Date"),
+spoc_reach_boxemm_cld <- cld(spoc_reach_boxemm,
+                     by = "Reach",
                      alpha = 0.05, 
                      Letters = letters,
                      decreasing = TRUE)
-spoc_reach_cld$.group = gsub(" ", "", spoc_reach_cld$.group)
-spoc_reach_cld <- arrange(spoc_reach_cld, Reach, Site, Date)
+spoc_reach_boxemm_cld$.group = gsub(" ", "", spoc_reach_boxemm_cld$.group)
+spoc_reach_boxemm_cld <- arrange(spoc_reach_boxemm_cld, Reach)
 
 #### SPOC Ribbon Plot ####
-ggplot(data = spoc_emm_sum) +
+# Nested model
+ggplot(data = spoc_nestedreach_emm_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
@@ -429,34 +396,54 @@ ggplot(data = spoc_emm_sum) +
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   facet_grid(vars(rows = Site))
 
-#### Exploratory SPOC Models ####
-SPOC_nested1 <- glmer(SPOC ~ Site/Reach*(Date) + (1|Replicate),
-                         data = SPOC_data, 
-                         family = Gamma(link = "log"))
-SPOC_full <- glmer(SPOC ~ Site*Reach*Date + (1|Replicate),
-                      data = SPOC_data, 
-                      family = Gamma(link = "log"))
-SPOC_GLMM <- glmer(SPOC ~ Site*Reach + (1|Replicate),
-                   data = SPOC_data, 
-                   family = Gamma(link = "log"))
-SPOC_GLMM2 <- glmer(SPOC ~ Reach + (1|Replicate),
-                   data = SPOC_data, 
-                   family = Gamma(link = "log"))
-SPOC_GLMM3 <- glmer(SPOC ~ Site + (1|Replicate),
-                    data = SPOC_data, 
-                    family = Gamma(link = "log"))
-SPOC.glm1 <- glm(SPOC ~ Site*Reach*Date, 
-                 data = SPOC_data, 
-                 family = Gamma(link = "log"))
-SPOC.glm2 <- glm(SPOC ~ Date*Site*Reach*Replicate, 
-                 data = SPOC_data, 
-                 family = Gamma(link = "log"))
-SPOC.glm3 <- glm(SPOC ~ Site*Reach*Replicate, 
-                 data = SPOC_data, 
-                 family = Gamma(link = "log"))
-SPOC.glm4 <- glm(SPOC ~ Site:Reach + Reach + Site, 
-                 data = SPOC_data, 
-                 family = Gamma(link = "log"))
+
+# Un-nested model
+ggplot(data = spoc_reach_emm_sum) +
+  geom_ribbon(aes(x = Date,
+                  ymin = asymp.LCL, 
+                  ymax = asymp.UCL,
+                  group = Reach,
+                  fill = Reach), 
+              alpha = 0.40, 
+              color = NA) + # opaqueness of the CI
+  # fill = "#3984ff") +
+  geom_line(aes(x = Date, 
+                y = response, 
+                group = Reach, 
+                color = Reach), 
+            lwd = 1) +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_color_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Particulate Organic Carbon Concentrations", 
+       x = "Date", 
+       y = expression(Concentration~(mg~C~L^-1))) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black"), 
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) 
+
+#### SPOC Boxplot ####
+ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
+  geom_boxplot(aes(fill = Reach)) +
+  geom_point(data = spoc_reach_boxemm_cld, aes(x = Reach, y = response), size = 1, shape = 19,
+             color = "blue") +
+  geom_text(data = spoc_reach_boxemm_cld, aes(x = Reach, y = response, label= .group,
+                                          vjust = -2.2, hjust = 0.5),
+            size = 5, position = position_dodge(0.5), color = "black") +
+  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
+  # scale_fill_brewer(palette = "Spectral") +
+  labs(title = "Dissolved Organic Carbon Concentrations", 
+       x = NULL,
+       y = expression(DOC~(g~C~ml^-1))) +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black", size = 12),
+        # axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(), 
+        legend.position = "none") +
+  scale_x_discrete(labels = c("Treatment", "Reference"))
 
 
 #### DOC SPOC Ratios ####
