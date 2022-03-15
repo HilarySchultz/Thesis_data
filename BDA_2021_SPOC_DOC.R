@@ -244,7 +244,7 @@ SPOC_data <- read.csv("BDA_SPOC_Calc.csv", header = T, sep = ",") %>%
   rename(Time = Date)
 
 outliers <- SPOC_data %>%
-  group_by(Time, Site) %>%
+  # group_by(Time, Site) %>%
   rstatix::identify_outliers("SPOC") %>%
   filter(is.extreme == TRUE)
 
@@ -307,8 +307,9 @@ spocmodel <- glmer(SPOC ~ Date + Reach + (1|Site) + (1|Replicate),
                    family = Gamma(link = "log"))
 plot(spocmodel)
 Anova(spocmodel)
-AIC(spocmodel) # -11.07058
-AICc(spocmodel) # -8.670581
+AIC(spocmodel) # -58.65812
+AICc(spocmodel) # -56.30098
+summary(spocmodel)
 
 # This is the same structure as the DOC model 
 spocmodel1 <- glmer(SPOC ~ Date + Reach + (1|Site),
@@ -316,8 +317,8 @@ spocmodel1 <- glmer(SPOC ~ Date + Reach + (1|Site),
                    family = Gamma(link = "log"))
 plot(spocmodel1)
 Anova(spocmodel1)
-AIC(spocmodel1) # -13.06513
-AICc(spocmodel1) # -11.08315
+AIC(spocmodel1) # -57.46977
+AICc(spocmodel1) # -55.52287
 summary(spocmodel1)
 
 # Response: SPOC
@@ -349,13 +350,13 @@ spoc_nestedreach_emm_sum <- summary(spoc_nestedreach_emm)
 
 # Non-nested model
 # For Ribbon plot
-spoc_reach_emm <- emmeans(spocmodel1, ~ Reach|Date,
+spoc_reach_emm <- emmeans(spocmodel, ~ Reach|Date,
                                 type = "response")
 
 spoc_reach_emm_sum <- summary(spoc_reach_emm)
 
 # For boxplot
-spoc_reach_boxemm <- regrid(emmeans(docmodel1, ~ Reach|Reach,
+spoc_reach_boxemm <- regrid(emmeans(spocmodel, ~ Reach|Reach,
                              type = "response"))
 
 ### CLD
@@ -425,7 +426,7 @@ ggplot(data = spoc_reach_emm_sum) +
         axis.text.x = element_text(angle = 45, vjust = 0.5)) 
 
 #### SPOC Boxplot ####
-ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
+ggplot(data = SPOC_data, aes(x = Reach, y = SPOC)) +
   geom_boxplot(aes(fill = Reach)) +
   geom_point(data = spoc_reach_boxemm_cld, aes(x = Reach, y = response), size = 1, shape = 19,
              color = "blue") +
