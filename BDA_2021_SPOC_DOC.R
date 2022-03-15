@@ -10,6 +10,7 @@ library(PerformanceAnalytics) # for making amazing correlation plots
 library(tidyverse)  # loads several useful packages, including ggplot2, 
 # tidyr, and dplyr
 library(lubridate)
+library(ggpubr)
 
 #### DOC #### 
 DOC <- read.csv("DOC_Data.csv", header = T, sep = ",") %>% 
@@ -72,276 +73,108 @@ DOC_data$Date <- ordered(DOC_data$Date,
 DOC_data %>% ggplot(aes(Conc_ppm)) +
   geom_histogram(binwidth = 0.1) 
 
-# Trying to normalize the distribution
-DOC_data$transformed <- abs(DOC_data$Conc_ppm - mean(DOC_data$Conc_ppm))
-shapiro.test(DOC_data$transformed)
-hist(DOC_data$transformed)
+# # Trying to normalize the distribution
+# DOC_data$transformed <- abs(DOC_data$Conc_ppm - mean(DOC_data$Conc_ppm))
+# shapiro.test(DOC_data$transformed)
+# hist(DOC_data$transformed)
 
-#### Exploratory/Bad DOC GLMMs ####
-
-# Models are singular - no good, overfitting.
-DOC_fullnested_trans <- glmer(transformed ~ Date/Site/Reach + (1|Replicate),
-                        data = DOC_data, 
-                        family = Gamma(link = "log"))
-isSingular(DOC_fullnested, tol = 0.0001) #TRUE
-
-DOC_fullnested_trans1 <- glmer(transformed ~ Date/Site*Reach + (1|Replicate),
-                              data = DOC_data, 
-                              family = Gamma(link = "log"))
-
-DOC_fullnested_trans2 <- glmer(transformed ~ Date*Site*Reach + (1|Replicate),
-                               data = DOC_data, 
-                               family = Gamma(link = "log"))
-
-DOC_test2 <- glmer(Conc_ppm ~ Site/(1|Replicate),
-                   data = DOC_data, 
-                   family = Gamma(link = "log"))
-
-DOC_test3 <- glmer(Conc_ppm ~ Site + (1|Replicate),
-                   data = DOC_data, 
-                   family = Gamma(link = "log"))
-
-DOC_fullnested <- glmer(Conc_ppm ~ Date/Site/Reach + (1|Replicate),
-                        data = DOC_data, 
-                        family = Gamma(link = "log"))
-
-DOC_fullnested1 <- glmer(Conc_ppm ~ Date/Site*Reach + (1|Replicate),
-                        data = DOC_data, 
-                        family = Gamma(link = "log"))
+#### DOC GLMMs ####
+# nAGQ = 0 is a less exact form of parameter estimation for GLMMs (helps model run)
+docmodel <- glmer(Conc_ppm ~ Date + Reach + (1|Site) + (1|Replicate),
+                  data = DOC_data, 
+                  nAGQ = 0,
+                  family = Gamma(link = "log"))
+Anova(docmodel)
+AIC(docmodel) # 358.2897
+AICc(docmodel) # 360.9085
 
 
-DOC_fullnested2 <- glmer(Conc_ppm ~ Date*Site*Reach + (1|Replicate),
-                         data = DOC_data, 
-                         family = Gamma(link = "log"))
-
-DOC_fullnested3 <- glmer(Conc_ppm ~ Date*Site*Reach + (1|Replicate),
-                         data = DOC_data, 
-                         family = gaussian(link = "log"))
-
-DOC_test <- glmer(Conc_ppm ~ Date/Site/Reach/(1|Replicate),
+docmodel1 <- glmer(Conc_ppm ~ Date + Reach + (1|Site),
                   data = DOC_data, 
                   family = Gamma(link = "log"))
+plot(docmodel1)
+Anova(docmodel1)
+AIC(docmodel1) # 356.2851
+AICc(docmodel1) # 358.5137
+summary(docmodel1)
 
-# This is without Date. Only site is significant but all these models are still singular
-DOC_fullnested4 <- glmer(Conc_ppm ~ Site/Reach + (1|Replicate),
-                         data = DOC_data, 
-                         family = Gamma(link = "log"))
-plot(DOC_fullnested4)
-Anova(DOC_fullnested4)
-
-DOC_fullnested5 <- glmer(Conc_ppm ~ Site*Reach + (1|Replicate),
-                         data = DOC_data, 
-                         family = Gamma(link = "log"))
-plot(DOC_fullnested5)
-Anova(DOC_fullnested5)
-
-DOC_test1 <- glmer(Conc_ppm ~ Site/Reach/(1|Replicate),
-                   data = DOC_data, 
-                   family = Gamma(link = "log"))
-plot(DOC_test1)
-Anova(DOC_test1)
-
-DOC_datetest1.1 <- glmer(Conc_ppm ~ Site/Reach + Date + (1|Replicate),
-                         data = DOC_data, 
-                         family = Gamma(link = "log"))
-plot(DOC_datetest1.1)
-Anova(DOC_datetest1.1)
-
-DOC_datetest2.1 <- glmer(Conc_ppm ~ Site/Reach*Date + (1|Replicate),
-                         data = DOC_data, 
-                         family = Gamma(link = "log"))
-plot(DOC_datetest2.1)
-Anova(DOC_datetest2.1)
-
-# Date shouldn't be nested within Site and Reach.
-DOC_datetest3 <- glmer(Conc_ppm ~ Site/Reach/Date + (1|Replicate),
-                       data = DOC_data, 
-                       family = Gamma(link = "log"))
-plot(DOC_datetest3)
-Anova(DOC_datetest3)
-
-DOC_datetest4 <- glmer(Conc_ppm ~ Site + Reach + Date + (1|Replicate),
-                       data = DOC_data, 
-                       family = Gamma(link = "log"))
-DOC_datetest5 <- glmer(Conc_ppm ~ Site + Reach + (1|Date) + (1|Replicate),
-                       data = DOC_data, 
-                       family = Gamma(link = "log"))
-DOC_datetest6 <- glmer(Conc_ppm ~ Date/Site + Reach + (1|Replicate),
-                       data = DOC_data, 
-                       family = Gamma(link = "log"))
-
-#### Exploratory/Bad DOC GLMs ####
-DOC_fullglm <- glm(Conc_ppm ~ Date*Site*Reach*Replicate, 
+docmodel2 <- glmer(Conc_ppm ~ Date + Reach + Site + (1|Replicate),
                    data = DOC_data,
-                   family = gaussian(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_fullglm) # a lot of points with leverage
-Anova(DOC_fullglm)
-AICc(DOC_fullglm) # 1150.068
-AIC(DOC_fullglm) # 349.8864
-
-# There is a four way interaction but I'm thinking that this is due to the unnested 
-# nature of the way replicate is included in the model. 
-
-DOC_fullglm2 <- glm(Conc_ppm ~ Site*Reach*Replicate, 
-                    data = DOC_data,
-                    family = gaussian(link = "log"))
-
-par(mfrow = c(2,2))
-plot(DOC_fullglm2) 
-Anova(DOC_fullglm2)
-AICc(DOC_fullglm2) # 867.6869
-AIC(DOC_fullglm2)  # 864.0505
-# Only site is significant
-
-DOC_fullglm3 <- glm(Conc_ppm ~ Site, 
-                    data = DOC_data,
-                    family = gaussian(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_fullglm3) 
-Anova(DOC_fullglm3)
-AICc(DOC_fullglm3) # 838.7048
-AIC(DOC_fullglm3) # 838.5263
-
-DOC_gammma <- glm(Conc_ppm ~ Site*Reach*Replicate, 
-                  data = DOC_data,
-                  family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_gammma) 
-Anova(DOC_gammma)
-AICc(DOC_gammma) # 787.5597
-AIC(DOC_gammma) # 782.9233
-
-DOC_gammma2 <- glm(Conc_ppm ~ Site, 
-                   data = DOC_data,
+                   nAGQ = 0,
                    family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_gammma2) 
-Anova(DOC_gammma2)
-AICc(DOC_gammma2) # 759.2363
-AIC(DOC_gammma2) # 759.0577
+plot(docmodel2)
+Anova(docmodel2)
+AIC(docmodel2) # 357.1709
+AICc(docmodel2) # 360.2143
+summary(docmodel2)
 
-# 4-way interaction
-DOC_gammma3 <- glm(Conc_ppm ~ Date*Site*Reach*Replicate, 
-                   data = DOC_data,
-                   family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_gammma3) 
-Anova(DOC_gammma3)
-AICc(DOC_gammma3) # 1184.621
-AIC(DOC_gammma3) #384.4397
-
-# Reduce
-DOC_gammma4 <- glm(Conc_ppm ~ Date:Site:Reach:Replicate + Date:Site:Replicate +
-                     Date:Site:Reach + Site:Reach + Date:Site + Replicate +Site +Date, 
-                   data = DOC_data,
-                   family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_gammma4) 
-Anova(DOC_gammma4)
-AICc(DOC_gammma4) # 1184.621
-AIC(DOC_gammma4) #384.4397
-
-# REduce
-DOC_gammma5 <- glm(Conc_ppm ~ Date:Site:Reach:Replicate + 
-                     Date:Site:Replicate + Date:Site + Date + Site, 
-                   data = DOC_data,
-                   family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_gammma5) 
-Anova(DOC_gammma5)
-AICc(DOC_gammma5) # 664.8359
-AIC(DOC_gammma5) # 462.3233
-
-DOC_gammma6 <- glm(Conc_ppm ~ Date:Site + Site +Date, 
-                   data = DOC_data,
-                   family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(DOC_gammma6) 
-Anova(DOC_gammma6)
-AICc(DOC_gammma6) # 664.8359
-AIC(DOC_gammma6)# 463.3233
-
-#### Final Models ####
-doctest <- glm(Conc_ppm ~ Date/Site/Reach,
-                              data = DOC_data, 
-                              family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(doctest)
-Anova(doctest)
-AIC(doctest) # 303.7063
-AICc(doctest) # 367.2115
-
-doctest1 <- glm(Conc_ppm ~ Date/Site + Date,
-               data = DOC_data, 
-               family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(doctest1)
-Anova(doctest1)
-AIC(doctest1) # 291.9806
-AICc(doctest1) # 305.0774
-
-doctest6 <- glm(Conc_ppm ~ Date/Site + Reach,
-                data = DOC_data, 
-                family = Gamma(link = "log"))
-par(mfrow = c(2,2))
-plot(doctest6)
-Anova(doctest6)
-AIC(doctest6) # 291.6785
-AICc(doctest6) # 305.8249
-
-
-# All other variations end up reducing down to Date:Site + Date
 
 #### Post-hoc tests ####
-doc_emm <- emmeans(doctest, ~ Reach|Site|Date,
+doc_emm_reach <- emmeans(docmodel1, ~ Reach|Date,
                        type = "response")
-doc_emm_sum <- summary(doc_emm)
+doc_emm_reach_sum <- summary(doc_emm_reach)
 
-doc_emm6 <- emmeans(doctest6, ~ Reach|Site|Date,
+##
+doc_emm_date <- emmeans(docmodel1, ~ Date|Reach,
                    type = "response")
-doc_emm_sum6 <- summary(doc_emm6)
+doc_emm_date_sum <- summary(doc_emm_date)
+
+##
+doc_rg <- ref_grid(docmodel1)
+doc_emm_reachtest1 <- emmeans(ref_grid(doc_rg), "source")
+doc_emm_reachtest <- regrid(emmeans(docmodel1, ~ Reach|Reach,
+                         type = "response"))
+doc_emm_reachtest_sum <- summary(doc_emm_reachtest)
 
 ### CLD
-doc_reach_cld <- cld(doc_emm,
-                 by = c("Site", "Date"),
+# Reach CLDs
+doc_reach_cld <- cld(doc_emm_reach,
+                 by = "Date",
                  alpha = 0.05, 
                  Letters = letters,
                  decreasing = TRUE)
 doc_reach_cld$.group = gsub(" ", "", doc_reach_cld$.group)
-doc_reach_cld <- arrange(doc_reach_cld, Reach, Site, Date)
+doc_reach_cld <- arrange(doc_reach_cld, Reach, Date)
 
-doc_reach_cld6 <- cld(doc_emm6,
-                     by = c("Site", "Date"),
+# Reach by Reach
+
+doc_reach_cldtest <- cld(doc_emm_reachtest,
+                     by = "Reach",
                      alpha = 0.05, 
                      Letters = letters,
                      decreasing = TRUE)
-doc_reach_cld6$.group = gsub(" ", "", doc_reach_cld6$.group)
-doc_reach_cld6 <- arrange(doc_reach_cld6, Reach, Site, Date)
+doc_reach_cldtest$.group = gsub(" ", "", doc_reach_cldtest$.group)
+doc_reach_cldtest <- arrange(doc_reach_cldtest, Reach)
 
+# Date CLD
+doc_date_cld <- cld(doc_emm_date,
+                     by = "Reach",
+                     alpha = 0.05, 
+                     Letters = letters,
+                     decreasing = TRUE)
+doc_date_cld$.group = gsub(" ", "", doc_date_cld$.group)
+doc_date_cld <- arrange(doc_date_cld, Reach, Date)
 
 #### DOC Box Plots ####
-# Boxplots don't work because you only have 3 points. 
-ggplot() +
-  geom_boxplot(data = DOC_data, aes(x = Date, y = Conc_ppm, fill = Reach)) +
-  geom_point(data = doc_reach_cld, aes(x = Date, y = response), size = 1, shape = 19,
+ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
+  geom_boxplot(aes(fill = Reach)) +
+  geom_point(data = doc_reach_cldtest, aes(x = Reach, y = response), size = 1, shape = 19,
              color = "blue") +
-  geom_text(data = doc_reach_cld, aes(x = Reach, y = response, label= .group,
+  geom_text(data = doc_reach_cldtest, aes(x = Reach, y = response, label= .group,
                                   vjust = -2.2, hjust = 0.5),
             size = 5, position = position_dodge(0.5), color = "black") +
-  geom_text(aes()) +
-  # scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  scale_fill_brewer(palette = "Spectral", name = "Reach", labels = c("BDA", "Reference")) +
+  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
+  # scale_fill_brewer(palette = "Spectral") +
   labs(title = "Dissolved Organic Carbon Concentrations", 
-       x = NULL, 
+       x = NULL,
        y = expression(DOC~(g~C~ml^-1))) +
   theme_bw() + 
   theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank()) +
-  theme(axis.text = element_text(size = 12)) +
-  facet_grid(Date~Site)   
+        axis.text = element_text(colour = "black", size = 12),
+        # axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(), 
+        legend.position = "none") +
+  scale_x_discrete(labels = c("Treatment", "Reference"))
 
 #### DOC Ribbon Plot ####
 ggplot(data = doc_emm_sum) +
@@ -371,8 +204,8 @@ geom_line(aes(x = Date,
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   facet_grid(vars(rows = Site)) 
 
-
-ggplot(data = doc_emm_sum6) +
+# Concentration by Date - fill = Reach
+ggplot(data = doc_emm_reach_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
@@ -396,8 +229,7 @@ ggplot(data = doc_emm_sum6) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  facet_grid(vars(rows = Site)) 
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) 
 
 #### SPOC #####
 
