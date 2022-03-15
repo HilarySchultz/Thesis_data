@@ -21,13 +21,13 @@ DOC <- read.csv("DOC_Data.csv", header = T, sep = ",") %>%
 # and extreme outliers (3), Which are 1.5 and 3 standard deviations away from the mean, respectively. 
 # I removed extreme outliers and doubled checked that those matched up with the observational data. 
 
-outliers <- DOC %>%
-  group_by(Date, Site) %>%
+doc_outliers <- DOC %>%
+  # group_by(Date, Site) %>%
   rstatix::identify_outliers("Conc_ppm") %>%
   filter(is.extreme == TRUE)
 
 # Removed outliers from dataframe changing dates
-DOC_data <- anti_join(DOC, outliers) %>%
+DOC_data <- anti_join(DOC, doc_outliers) %>%
   rename(Time = Date) 
 
 # Setting this so the sampling dates are all at the start of the week
@@ -82,11 +82,11 @@ DOC_data %>% ggplot(aes(Conc_ppm)) +
 # nAGQ = 0 is a less exact form of parameter estimation for GLMMs (helps model run)
 docmodel <- glmer(Conc_ppm ~ Date + Reach + (1|Site) + (1|Replicate),
                   data = DOC_data, 
-                  nAGQ = 0,
                   family = Gamma(link = "log"))
+plot(docmodel)
 Anova(docmodel)
-AIC(docmodel) # 358.2897
-AICc(docmodel) # 360.9085
+AIC(docmodel) # 386.9168
+AICc(docmodel) # 389.4272
 
 # This is the current working model 3/15/22
 docmodel1 <- glmer(Conc_ppm ~ Date + Reach + (1|Site),
@@ -94,8 +94,8 @@ docmodel1 <- glmer(Conc_ppm ~ Date + Reach + (1|Site),
                   family = Gamma(link = "log"))
 plot(docmodel1)
 Anova(docmodel1)
-AIC(docmodel1) # 356.2851
-AICc(docmodel1) # 358.5137
+AIC(docmodel1) # 385.1746
+AICc(docmodel1) # 387.3116
 summary(docmodel1)
 
 docmodel2 <- glmer(Conc_ppm ~ Date + Reach + Site + (1|Replicate),
@@ -175,7 +175,8 @@ ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
         # axis.text.x = element_blank(),
         axis.ticks.x = element_blank(), 
         legend.position = "none") +
-  scale_x_discrete(labels = c("Treatment", "Reference")) +
+  scale_x_discrete(labels = c("Treatment", "Reference")) 
+
   stat_compare_means(comparisons = comparisons)
   stat_compare_means(lacel ="p.signif", method = "t.test", paired = F)
 
@@ -243,12 +244,12 @@ SPOC_data <- read.csv("BDA_SPOC_Calc.csv", header = T, sep = ",") %>%
   select(!Site.ID) %>%
   rename(Time = Date)
 
-outliers <- SPOC_data %>%
+spoc_outliers <- SPOC_data %>%
   # group_by(Time, Site) %>%
   rstatix::identify_outliers("SPOC") %>%
   filter(is.extreme == TRUE)
 
-SPOC_data <- anti_join(SPOC_data, outliers)
+SPOC_data <- anti_join(SPOC_data, spoc_outliers)
 
 # SPOC_summary <- SPOC_data %>% summarySE(groupvars = c("Site", "Date", "Reach"), measurevar = "SPOC") %>%
 #     rename(stdev = sd, stderror = se)
