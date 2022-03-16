@@ -312,27 +312,7 @@ ggplot() +
         axis.ticks.x = element_blank()) +
   theme(axis.text = element_text(size = 12)) +
   facet_grid(Date~Location)
+
 #rep(-1.8, 5), 2, rep(-1.8, 5)
 
 
-### Refined plot ###  
-ggplot() +
-  geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
-  geom_point(data = reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
-             color = "blue") +
-  geom_text(data = reach_cld, aes(x = Reach, y = response, label= .group,
-                                  vjust = -2.2, hjust = 0.5),
-            size = 5, position = position_dodge(0.5), color = "black") +
-  geom_text(aes()) +
-  # scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  scale_fill_brewer(palette = "Spectral", name = "Reach", labels = c("BDA", "Reference")) +
-  labs(title = "Benthic Particulate Organic Carbon Pools", 
-       x = NULL, 
-       y = expression(BPOC~(g~C~m^-2))) +
-  theme_bw() + 
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank()) +
-  theme(axis.text = element_text(size = 12)) +
-  facet_grid(Date~Site)                                  
