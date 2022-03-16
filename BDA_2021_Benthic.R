@@ -150,9 +150,11 @@ Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) +
 # when the factor is displayed. Factors levels are always character values. 
 
 # Changing Site, Reach, Location, Date, and Replicate to ordered factors.
-Benthic_data[,1:5] <- lapply(Benthic_data[,1:5], as.ordered)
-Benthic_data$Date <- ordered(Benthic_data$Date, levels = c("June", "July", "August"))
+Benthic_data[,1:5] <- lapply(Benthic_data[,1:5], as.factor)
 
+Benthic_data$Date <- ordered(Benthic_data$Date, levels = c("June", "July", "August"))
+Benthic_data$Location <- ordered(Benthic_data$Location, levels = c("LWR", "MID", "UPR"))
+Benthic_data$Replicate <- ordered(Benthic_data$Replicate, levels = c(1:3))
 #### Final GLMMs ####
 
 ### Date and Reach = Fixed effects, Site = random effect
