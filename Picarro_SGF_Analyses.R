@@ -103,6 +103,13 @@ CH4_outliers <- CH4_fluxes %>%
 
 CH4_fluxes <- anti_join(CH4_fluxes, CH4_outliers)
 
+# Writing out .csv for soil gas flux covariates
+# These .csv will have outliers removed as well as new ordered and factored variables
+# There was just going to be too much going on in this script
+
+write.csv(CH4_fluxes, "Methane_data.csv", row.names = F)
+write.csv(CO2_fluxes, "CarbonDioxide_data.csv", row.names = F)
+
 # Covariates: soil moisture, soil temperature, and EC (SOC - in another RScript)
 #### Histograms to see the distribution of the data ####
 CO2_fluxes %>% 
