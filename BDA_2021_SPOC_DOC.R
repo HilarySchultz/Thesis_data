@@ -62,10 +62,11 @@ DOC_data <- DOC_data %>%
                           Time == "09/10/2021" ~ "9/7/2021" ))
 
 # Changing Time, Date, Sample, Site, Reach, Replicate to ordered factors
-DOC_data[,1:5] <- lapply(DOC_data[,1:5], as.ordered)
+DOC_data[,1:5] <- lapply(DOC_data[,1:5], as.factor)
 DOC_data$Date <- ordered(DOC_data$Date, 
                          levels = c("6/1/2021", "6/7/2021", "6/14/2021", "6/28/2021", 
                                     "7/12/2021", "7/26/2021", "8/9/2021", "8/25/2021", "9/7/2021"))
+DOC_data$Replicate <- ordered(DOC_data$Replicate, levels = c(1:3))
 
 #### DOC Models ####
 # Histogram to see the distribution of the data
@@ -242,12 +243,13 @@ SPOC_data <- SPOC_data %>%
                           Time == "09/08/2021" ~ "9/7/2021",
                           Time == "09/10/2021" ~ "9/7/2021" ))
 
-SPOC_data[,1:5] <- lapply(SPOC_data[,1:5], as.ordered)
-SPOC_data$Date <- as.ordered(SPOC_data$Date)
-SPOC_data$Time <- as.ordered(SPOC_data$Time)
+SPOC_data[,1:5] <- lapply(SPOC_data[,1:5], as.factor)
+
 SPOC_data$Date <- ordered(SPOC_data$Date, 
                          levels = c("6/14/2021", "6/28/2021","7/12/2021", "7/26/2021", 
                                     "8/9/2021", "8/25/2021", "9/7/2021"))
+SPOC_data$Replicate <- ordered(SPOC_data$Replicate, 
+                               levels = c(1:3))
 hist(SPOC_data$SPOC)
 
 #### GLMMs for SPOC ####
