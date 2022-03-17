@@ -50,10 +50,13 @@ CDioxide_data$Reach <- as.factor(CDioxide_data$Reach)
 CDioxide_data$Chamber <- ordered(CDioxide_data$Chamber, 
                             levels = c(1:12))
 
-
+# I think I need to change the data types for this model to run. 
+CDioxide_data <- CDioxide_data %>%
+  mutate()
 ### Exploratory Models ###
 # Full interaction models
 cd_model <- glmer(CO2_flux_g ~ Date*Reach*Soil_Moisture_wfv*Soil_Temp_C*EC*C_Conc + (1|Site) + (1|Chamber), 
                        data = CDioxide_data,
                        family = Gamma(link = "log"))
 # I may need to make all of these numeric for this to work, or should I do a random forest?
+Anova(cd_model)
