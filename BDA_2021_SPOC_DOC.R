@@ -118,15 +118,12 @@ ggplot(data = doc_emm_sum) +
           facet_grid(~Site)
 
 #### SPOC #####
-
-# Reading in SPOC calculations and creating a summary table of SE and CI
 SPOC_data <- read.csv("BDA_SPOC_Calc.csv", header = T, sep = ",") %>% 
   filter(SPOC > 0, Reach != "GS", Reach != "DS") %>%
   select(!Site.ID) %>%
   rename(Time = Date)
 
 spoc_outliers <- SPOC_data %>%
-  # group_by(Time, Site) %>%
   rstatix::identify_outliers("SPOC") %>%
   filter(is.extreme == TRUE)
 
@@ -179,13 +176,10 @@ SPOC_data$Replicate <- ordered(SPOC_data$Replicate,
                                levels = c(1:3))
 hist(SPOC_data$SPOC)
 
-#### GLMMs for SPOC ####
+#### GLMM for SPOC ####
 # SPOC_data <- SPOC_data %>% 
-#   mutate(Date = as.factor(as.Date(mdy(Date))), 
-#           Site = as.factor(ordered(Site, levels = c("LP", "FH", "TP"))), 
-#          Reach = as.factor(ordered(Reach, levels = c("DS", "BDA", "REF"))))
+#   mutate(Date = as.factor(as.Date(mdy(Date)))
 
-# Replicate = random
 finalspocmodel <- glmer(SPOC ~ Date/Site/Reach + (1|Replicate),
                    data = SPOC_data, 
                    family = Gamma(link = "log"))
@@ -194,50 +188,6 @@ Anova(spocmodeltest)
 AIC(spocmodeltest) # -129.5816
 AICc(spocmodeltest) # -79.45506
 summary(spocmodeltest)
-
-spocmodeltest1 <- glmer(SPOC ~ Date*Site*Reach + (1|Replicate),
-                       data = SPOC_data, 
-                       control = glmerControl(optimizer = "bobyqa",
-                                              optCtrl = list(maxfun = 100000)),
-                       family = Gamma(link = "log"))
-plot(spocmodeltest1)
-Anova(spocmodeltest1)
-AIC(spocmodeltest1) # -129.5816
-AICc(spocmodeltest1) # -79.45506
-summary(spocmodeltest1)
-
-
-
-spocmodel <- glmer(SPOC ~ Date + Reach + (1|Site) + (1|Replicate),
-                   data = SPOC_data, 
-                   family = Gamma(link = "log"))
-plot(spocmodel)
-Anova(spocmodel)
-AIC(spocmodel) # -58.65812
-AICc(spocmodel) # -56.30098
-summary(spocmodel)
-
-# Replicate = NULL
-# This is the same structure as the DOC model 
-spocmodel1 <- glmer(SPOC ~ Date + Reach + (1|Site),
-                   data = SPOC_data, 
-                   family = Gamma(link = "log"))
-plot(spocmodel1)
-Anova(spocmodel1)
-AIC(spocmodel1) # -57.46977
-AICc(spocmodel1) # -55.52287
-summary(spocmodel1)
-
-
-SPOC_nested <- glmer(SPOC ~ Date/Reach + (1|Site) + (1|Replicate),
-                              data = SPOC_data, 
-                              family = Gamma(link = "log"))
-Anova(SPOC_nested)
-plot(SPOC_nested)
-AIC(SPOC_nested) # -75.63007
-AICc(SPOC_nested) # -69.85649
-summary(SPOC_nested)
-
 
 #### Post-hoc Tests ####
 # For Ribbon plot
