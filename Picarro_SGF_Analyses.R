@@ -186,35 +186,17 @@ ggplot(data = cdioxide_emm_sum) +
 # labels = c("6/7/2021", "", "6/28/2021", "", "7/26/2021", "", "8/25/2021", ""))
 
 #### CH4 GLMM ####
-methanemodel <- lmer(CH4_flux_g ~ Date + Reach + (1|Site) + (1|Chamber),
-                           data = CH4_fluxes)
-Anova(methanemodel)
-AICc(methanemodel)
-AIC(methanemodel)
-
 finalmethanemodel <- lmer(CH4_flux_g ~ Date/Site/Reach + (1|Chamber),
                      data = CH4_fluxes)
-Anova(methanemodeltest)
-AICc(methanemodeltest)
-AIC(methanemodeltest)
+Anova(finalmethanemodel)
+AICc(finalmethanemodel) # -1851.34
+AIC(finalmethanemodel) # -1878.613
+
 #### Post-hoc ####
 ### Emmeans
-# Reach by Date for ribbon plot
 methane_emm <- emmeans(finalmethanemodel, ~ Reach|Date,
                        type = "response")
 methane_emm_sum <- summary(methane_emm)
-
-# Reach by reach
-# Boxplot 
-methane_reach_emm <- emmeans(methanemodel, ~ Reach,
-                                 type = "response")
-
-### CLD
-methane_reach_cld <- cld(methane_reach_emm,
-                          alpha = 0.05, 
-                          Letters = letters)
-methane_reach_cld$.group <- gsub(" ", "", methane_reach_cld$.group)
-
 
 #### Methane Plots ####
 ggplot(data = methane_emm_sum) +
@@ -244,39 +226,7 @@ ggplot(data = methane_emm_sum) +
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   facet_grid(~Site)
 
-# Boxplot
-ggplot(data = CH4_fluxes, aes(x = Reach, y = CH4_flux_g)) +
-  geom_boxplot(aes(fill = Reach)) +
-  geom_point(data = methane_reach_cld, aes(x = Reach, y = emmean), size = 1, shape = 19,
-             color = "blue") +
-  geom_text(data = methane_reach_cld, aes(x = Reach, y = emmean, label= .group,
-                                           vjust = -2.2, hjust = 0.5),
-            size = 5, position = position_dodge(0.5), color = "black") +
-  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  # scale_fill_brewer(palette = "Spectral") +
-  labs(title = "Riparian Soil Methane Fluxes", 
-       x = NULL,
-       y = expression(CH[4]~Fluxes~(g~C~m^-2~d^-1))) +
-  theme_bw() + 
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black", size = 12),
-        # axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(), 
-        legend.position = "none") +
-  scale_x_discrete(labels = c("Treatment", "Reference"))
 
-### Figuring out where missing data is 
-CH4_fluxes %>%
-  filter(Site == "LP", Reach == "BDA")
-
-CH4_fluxes %>%
-  filter(Site == "TP", Reach == "REF")
-
-missingdata <- CH4_fluxes %>%
-  filter(Site == "FH")
-
-length(CH4_fluxes$X)
-length(CO2_fluxes$X)
 
 
 
