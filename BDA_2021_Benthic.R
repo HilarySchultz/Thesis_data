@@ -170,7 +170,6 @@ benthic_reach_cld <- arrange(benthic_reach_cld, Reach, Site, Date)
 # reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
 
 #### PLOTS ####
-# Reach by Date 
 ggplot() +
   geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
   geom_point(data = benthic_cld, aes(x = Reach, y = response), size = 1, shape = 19,
@@ -191,49 +190,6 @@ ggplot() +
         axis.ticks.x = element_blank()) +
   theme(axis.text = element_text(size = 12)) +
   facet_grid(Date~Site) 
-
-# Reach comparison  
-ggplot() +
-  geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
-  geom_point(data = benthic_reachbyreach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
-             color = "blue") +
-  geom_text(data = benthic_reachbyreach_cld, aes(x = Reach, y = response, label= .group,
-                                              vjust = -2.1, hjust = 0.5),
-            size = 6, position = position_dodge(0.5), color = "red") +
-  geom_text(aes()) +
-  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  # scale_fill_brewer(palette = "Spectral") +
-  labs(title = "Benthic Particulate Organic Carbon Pools", 
-       x = NULL, 
-       y = expression(BPOC~(g~C~m^-2))) +
-  theme_bw() + 
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank()) +
-  theme(axis.text = element_text(size = 12)) 
-
-# Reach by Date and Location
-ggplot() +
-  geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
-  geom_point(data = benthic_reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
-             color = "blue") +
-  geom_text(data = benthic_reach_cld, aes(x = Reach, y = response, label= .group,
-                                          vjust = -2.1, hjust = 0.5),
-            size = 6, position = position_dodge(0.5), color = "red") +
-  geom_text(aes()) +
-  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  # scale_fill_brewer(palette = "Spectral") +
-  labs(title = "Benthic Particulate Organic Carbon Pools", 
-       x = NULL, 
-       y = expression(BPOC~(g~C~m^-2))) +
-  theme_bw() + 
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank()) +
-  theme(axis.text = element_text(size = 12)) +
-  facet_grid(Date~Location)
 
 #rep(-1.8, 5), 2, rep(-1.8, 5)
 
