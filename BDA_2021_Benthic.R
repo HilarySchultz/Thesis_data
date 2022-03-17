@@ -114,103 +114,31 @@ benthic_outliers <- Benthic_data %>%
 
 Benthic_data <- anti_join(Benthic_data, benthic_outliers)
 
+#### Model for Benthic Data ####
 
-
-#### Models for Benthic Data ####
-# Changing the class of each variable. Categorical variables enter into R differently than continuous variables
-# storing data as factors insures taht the modeling functions will treat such data correctly. 
-# Factors in R are stored as a vector of integer values with a corresponding set of character values to use
-# when the factor is displayed. Factors levels are always character values. 
 # Histogram to see the distribution of the data
+# Right-skewed
 Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) +
   geom_histogram(binwidth = 10) +
   facet_grid(rows = vars(Reach)) 
+
 # Changing Site, Reach, Location, Date, and Replicate to ordered factors.
 Benthic_data[,1:5] <- lapply(Benthic_data[,1:5], as.factor)
 
 Benthic_data$Date <- ordered(Benthic_data$Date, levels = c("June", "July", "August"))
 Benthic_data$Location <- ordered(Benthic_data$Location, levels = c("LWR", "MID", "UPR"))
 Benthic_data$Replicate <- ordered(Benthic_data$Replicate, levels = c(1:3))
-#### Final GLMMs ####
 
-### Date and Reach = Fixed effects, Site = random effect
-# Trying to determine the best model by changing up location and replicate. 
-
-# Location = fixed, replicate = random
-bmodel <- glmer(Total_BPOC_Mass_per_Area ~ Date + Reach + Location + (1|Site) + (1|Replicate),
-                data = Benthic_data,
-                family = Gamma(link="log")) 
-plot(bmodel) # Bunched in the lower left-hand corner. 
-Anova(bmodel) # Date, Reach, Location are ***
-AICc(bmodel)  # 1344.603
-AIC(bmodel) # 1343.387
-summary(bmodel)
-
-# Location = random, replicate = random 
-bmodel1 <- glmer(Total_BPOC_Mass_per_Area ~ Date + Reach + (1|Location) + (1|Site) + (1|Replicate),
-                data = Benthic_data, 
-                family = Gamma(link="log")) 
-plot(bmodel1) # Bunched in the lower left-hand corner. 
-Anova(bmodel1) # Date and Reach are ***
-AICc(bmodel1)  # 1349.593
-AIC(bmodel1) # 1348.627
-summary(bmodel1)
-
-# Location = random, replicate = NULL
-bmodel2 <- glmer(Total_BPOC_Mass_per_Area ~ Date + Reach + (1|Location) + (1|Site),
-                 data = Benthic_data, 
-                 family = Gamma(link="log")) 
-plot(bmodel2) # Bunched in the lower left-hand corner, less so than previous bmodels 
-Anova(bmodel2) # Date and Reach are ***
-AICc(bmodel2)  # 1355.239
-AIC(bmodel2) # 1354.493
-
-# Location = fixed, replicate = NULL
-bmodel3 <- glmer(Total_BPOC_Mass_per_Area ~ Date + Reach + Location + (1|Site),
-                 data = Benthic_data, 
-                 family = Gamma(link="log")) 
-plot(bmodel3) # Bunched in the lower left-hand corner. 
-Anova(bmodel3) # Date, Reach, Location are ***
-AICc(bmodel3)  # 1349.928
-AIC(bmodel3) # 1348.961
-
-test <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location*Date + (1|Replicate),
-              data = Benthic_data, 
-              nAGQ = 0,
-              family = Gamma(link="log"))
-plot(test)
-Anova(test)
-AICc(test)  # 1381.576
-AIC(test) # 1318.368
-
+## GLMM ##
 finalbenthicmodel <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach + (1|Location/Replicate),
               data = Benthic_data,
               family = Gamma(link="log"))
-plot(test1)
-Anova(test1)
-AICc(test1)  # 1301.195
-AIC(test1) # 1294.401
+plot(finalbenthicmodel)
+Anova(finalbenthicmodel)
+AICc(finalbenthicmodel)  # 1301.195
+AIC(finalbenthicmodel) # 1294.401
 
-test2 <- glmer(Total_BPOC_Mass_per_Area ~ Date*Site*Reach + (1|Location/Replicate),
-               data = Benthic_data,
-               family = Gamma(link="log"))
-plot(test2)
-Anova(test2)
-AICc(test2)  # 1307.7
-AIC(test2) # 1300.906
 
-anova(test1, test2)
-
-bmodelnest <- glmer(Total_BPOC_Mass_per_Area ~ Date + Reach + (1|Location/Replicate) + (1|Site),
-                data = Benthic_data,
-                family = Gamma(link="log")) 
-plot(bmodelnest) # Bunched in the lower left-hand corner. 
-Anova(bmodelnest) # Date, Reach, Location are ***
-AICc(bmodelnest)  # 1339.944
-AIC(bmodelnest) # 1338.978
-# Here, with the random effects nesting we are saying:
-# The intercept varies among locations and among replicates within locations (nested)
-# (1|Location/Replicate) = (1|Location) + (1|Location:Replicate)
 
 overdisp_fun <- function(model) {
   rdf <- df.residual(model)
