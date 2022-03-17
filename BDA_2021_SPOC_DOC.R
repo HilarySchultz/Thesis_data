@@ -74,58 +74,31 @@ DOC_data$Replicate <- ordered(DOC_data$Replicate, levels = c(1:3))
 DOC_data %>% ggplot(aes(Conc_ppm)) +
   geom_histogram(binwidth = 0.1) 
 
-# # Trying to normalize the distribution
-# DOC_data$transformed <- abs(DOC_data$Conc_ppm - mean(DOC_data$Conc_ppm))
-# shapiro.test(DOC_data$transformed)
-# hist(DOC_data$transformed)
-
-#### DOC GLMMs ####
-# nAGQ = 0 is a less exact form of parameter estimation for GLMMs (helps model run)
-
-# Replicate = random
-docmodel <- glmer(Conc_ppm ~ Date + Reach + (1|Site) + (1|Replicate),
+#### DOC GLMM ####
+finaldocmodel <- glmer(Conc_ppm ~ Date/Site/Reach + (1|Replicate),
                   data = DOC_data, 
                   family = Gamma(link = "log"))
-plot(docmodel)
-Anova(docmodel)
-AIC(docmodel) # 386.9168
-AICc(docmodel) # 389.4272
-
-# This is the current working model 3/15/22
-# Replicate = NULL
-docmodel1 <- glmer(Conc_ppm ~ Date + Reach + (1|Site),
-                  data = DOC_data, 
-                  family = Gamma(link = "log"))
-plot(docmodel1)
-Anova(docmodel1)
-AIC(docmodel1) # 385.1746
-AICc(docmodel1) # 387.3116
-summary(docmodel1)
-
-DOC_nested <- glmer(Conc_ppm ~ Date/Reach + (1|Site) + (1|Replicate),
-                     data = DOC_data, 
-                     family = Gamma(link = "log"))
-Anova(DOC_nested)
-plot(DOC_nested)
-AIC(DOC_nested) # 398.9339
-AICc(DOC_nested) # 405.6785
+plot(finaldocmodel)
+Anova(finaldocmodel)
+AIC(finaldocmodel) # 360.3364
+AICc(finaldocmodel) # 422.9247
 
 #### Post-hoc tests ####
 # Used in ribbon plot
 # Reach by Date
-doc_reachdate_emm <- emmeans(docmodel1, ~ Reach|Date,
+doc_emm <- emmeans(finaldocmodel, ~ Reach|Date|Site,
                        type = "response")
-doc_reachdate_emm_sum <- summary(doc_reachdate_emm)
+doc_emm_sum <- summary(doc_emm)
 
-# Date by Reach
-doc_datereach_emm <- emmeans(docmodel1, ~ Date|Reach,
-                             type = "response")
-doc_datereach_emm_sum <- summary(doc_datereach_emm)
-
-## Reach 
-doc_reach_emm <- emmeans(docmodel1, ~ Reach,
-                   type = "response")
-doc_reach_emm_sum <- summary(doc_reach_emm)
+# # Date by Reach
+# doc_datereach_emm <- emmeans(docmodel1, ~ Date|Reach,
+#                              type = "response")
+# doc_datereach_emm_sum <- summary(doc_datereach_emm)
+# 
+# ## Reach 
+# doc_reach_emm <- emmeans(docmodel1, ~ Reach,
+#                    type = "response")
+# doc_reach_emm_sum <- summary(doc_reach_emm)
 
 ### CLD
 # Reach CLD
@@ -164,7 +137,7 @@ ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
 
 #### DOC Ribbon Plot ####
 # Concentration by Date - fill = Reach
-ggplot(data = doc_reachdate_emm_sum) +
+ggplot(data = doc_emm_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
@@ -188,7 +161,8 @@ ggplot(data = doc_reachdate_emm_sum) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5)) 
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+          facet_grid(~Site)
 
 #### SPOC #####
 
@@ -259,6 +233,28 @@ hist(SPOC_data$SPOC)
 #          Reach = as.factor(ordered(Reach, levels = c("DS", "BDA", "REF"))))
 
 # Replicate = random
+finalspocmodel <- glmer(SPOC ~ Date/Site/Reach + (1|Replicate),
+                   data = SPOC_data, 
+                   family = Gamma(link = "log"))
+plot(spocmodeltest)
+Anova(spocmodeltest)
+AIC(spocmodeltest) # -129.5816
+AICc(spocmodeltest) # -79.45506
+summary(spocmodeltest)
+
+spocmodeltest1 <- glmer(SPOC ~ Date*Site*Reach + (1|Replicate),
+                       data = SPOC_data, 
+                       control = glmerControl(optimizer = "bobyqa",
+                                              optCtrl = list(maxfun = 100000)),
+                       family = Gamma(link = "log"))
+plot(spocmodeltest1)
+Anova(spocmodeltest1)
+AIC(spocmodeltest1) # -129.5816
+AICc(spocmodeltest1) # -79.45506
+summary(spocmodeltest1)
+
+
+
 spocmodel <- glmer(SPOC ~ Date + Reach + (1|Site) + (1|Replicate),
                    data = SPOC_data, 
                    family = Gamma(link = "log"))
@@ -292,10 +288,10 @@ summary(SPOC_nested)
 
 #### Post-hoc Tests ####
 # For Ribbon plot
-spoc_reachdate_emm <- emmeans(spocmodel1, ~ Reach|Date,
+spoc_emm <- emmeans(finalspocmodel, ~ Reach|Date|Site,
                    type = "response")
 
-spoc_reachdate_emm_sum <- summary(spoc_reachdate_emm)
+spoc_emm_sum <- summary(spoc_emm)
 
 # For Boxplot
 spoc_reach_emm <- emmeans(spocmodel1, ~ Reach,
@@ -310,8 +306,8 @@ spoc_reach_emm_cld$.group = gsub(" ", "", spoc_reach_emm_cld$.group)
 spoc_reach_emm_cld <- arrange(spoc_reach_emm_cld, Reach)
 
 #### SPOC Ribbon Plot ####
-# Nested model
-ggplot(data = spoc_reachdate_emm_sum) +
+
+ggplot(data = spoc_emm_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
@@ -335,7 +331,8 @@ ggplot(data = spoc_reachdate_emm_sum) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  facet_grid(~Site)
 
 #### SPOC Boxplot ####
 ggplot(data = SPOC_data, aes(x = Reach, y = SPOC)) +
