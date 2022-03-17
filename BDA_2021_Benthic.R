@@ -129,7 +129,7 @@ Benthic_data$Date <- ordered(Benthic_data$Date, levels = c("June", "July", "Augu
 Benthic_data$Location <- ordered(Benthic_data$Location, levels = c("LWR", "MID", "UPR"))
 Benthic_data$Replicate <- ordered(Benthic_data$Replicate, levels = c(1:3))
 
-## GLMM ##
+### GLMM ###
 finalbenthicmodel <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach + (1|Location/Replicate),
               data = Benthic_data,
               family = Gamma(link="log"))
@@ -153,23 +153,11 @@ overdisp_fun(finalbenthicmodel) # Model is not overdispersed
 #### Post-hoc tests ####
 
 ### Emmeans
-# Reach by Date and Location
 benthic_emm <- emmeans(finalbenthicmodel, ~ Reach|Date|Site,
                        type = "response")
 benthic_emm_sum <- summary(benthic_emm)
 
-# Reach by Reach
-# benthic_reach_emm <- emmeans(finalbenthicmodel, ~ Reach,
-#                              type = "response")
-# benthic_reach_emm_sum <- summary(benthic_reachbyreach_emm)
-
-# Reach by Date
-# benthic_reachdate_emm <- emmeans(finalbenthicmodel, ~ Reach|Date,
-#                              type = "response")
-# benthic_reachdate_emm_sum <- summary(benthic_reachdate_emm)
-
 ### CLD
-# Reach by Date and Location
 benthic_reach_cld <- cld(benthic_emm,
                  by = c("Site", "Date"),
                  alpha = 0.05, 
@@ -178,31 +166,8 @@ benthic_reach_cld <- cld(benthic_emm,
 benthic_reach_cld$.group = gsub(" ", "", benthic_reach_cld$.group)
 benthic_reach_cld <- arrange(benthic_reach_cld, Reach, Site, Date)
 
-
-
-
-# Reach by Reach
-benthic_cld <- cld(benthic_reachbyreach_emm,
-                         by = c("Site", "Date"),
-                         alpha = 0.05, 
-                         Letters = letters,
-                         decreasing = TRUE)
-benthic_cld$.group = gsub(" ", "", benthic_cld$.group)
-benthic_cld <- arrange(benthic_cld, Reach)
-
-# Reach by Date
-# benthic_reachdate_cld <- cld(benthic_reachdate_emm,
-#                                 by = "Date",
-#                                 alpha = 0.05, 
-#                                 Letters = letters,
-#                                 decreasing = TRUE)
-# benthic_reachdate_cld$.group = gsub(" ", "", benthic_reachdate_cld$.group)
-# benthic_reachdate_cld <- arrange(benthic_reachdate_cld, Reach, Date)
-
-
 # Asterisks
 # reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
-
 
 #### PLOTS ####
 # Reach by Date 
