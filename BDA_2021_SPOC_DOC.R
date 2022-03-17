@@ -84,59 +84,12 @@ AIC(finaldocmodel) # 360.3364
 AICc(finaldocmodel) # 422.9247
 
 #### Post-hoc tests ####
-# Used in ribbon plot
-# Reach by Date
+### Emmeans
 doc_emm <- emmeans(finaldocmodel, ~ Reach|Date|Site,
                        type = "response")
 doc_emm_sum <- summary(doc_emm)
 
-# # Date by Reach
-# doc_datereach_emm <- emmeans(docmodel1, ~ Date|Reach,
-#                              type = "response")
-# doc_datereach_emm_sum <- summary(doc_datereach_emm)
-# 
-# ## Reach 
-# doc_reach_emm <- emmeans(docmodel1, ~ Reach,
-#                    type = "response")
-# doc_reach_emm_sum <- summary(doc_reach_emm)
-
-### CLD
-# Reach CLD
-doc_reach_cld <- cld(doc_reach_emm,
-                 alpha = 0.05, 
-                 Letters = letters,
-                 decreasing = TRUE)
-doc_reach_cld$.group = gsub(" ", "", doc_reach_cld$.group)
-doc_reach_cld <- arrange(doc_reach_cld, Reach)
-
-#### DOC Box Plots ####
-comparisons <- list(c("BDA", "REF"))
-
-ggplot(data = DOC_data, aes(x = Reach, y = Conc_ppm)) +
-  geom_boxplot(aes(fill = Reach)) +
-  geom_point(data = doc_reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
-             color = "blue") +
-  geom_text(data = doc_reach_cld, aes(x = Reach, y = response, label= .group,
-                                  vjust = -2.2, hjust = 0.5),
-            size = 5, position = position_dodge(0.5), color = "black") +
-  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  # scale_fill_brewer(palette = "Spectral") +
-  labs(title = "Dissolved Organic Carbon Concentrations", 
-       x = NULL,
-       y = expression(DOC~(g~C~ml^-1))) +
-  theme_bw() + 
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black", size = 12),
-        # axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(), 
-        legend.position = "none") + # Says don't plot the legend
-  scale_x_discrete(labels = c("Treatment", "Reference")) 
-
-  stat_compare_means(comparisons = comparisons)
-  stat_compare_means(lacel ="p.signif", method = "t.test", paired = F)
-
 #### DOC Ribbon Plot ####
-# Concentration by Date - fill = Reach
 ggplot(data = doc_emm_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
