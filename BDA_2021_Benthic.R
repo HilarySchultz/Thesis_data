@@ -12,7 +12,7 @@ library(tidyverse)  # loads several useful packages, including ggplot2,
 
 #### BENTHIC CALCULATIONS ####
 
-# Reading in FBPOC data and doing the calculations to compare to google sheets
+# FBPOC calculations
 # Final calculations: Jaunary 2022
 FBPOC_data <- read.csv("BDA_FBPOC_Calc.csv", header = T, sep = ",") %>% 
   select(2:8, 14:15) %>%
@@ -26,12 +26,11 @@ FBPOC_data <- read.csv("BDA_FBPOC_Calc.csv", header = T, sep = ",") %>%
          FBPOC_Carbon_Mass_per_Area = FBPOC_Total_OM/240.53 * 1000 * 0.52)
 # Units are in g C/m^2
 
-# Pulling out the average volume column values
+# Benthinator volumes df
 Benthinator_volume <- FBPOC_data %>% 
   select(Site, Reach, Location, Replicate, Date, Benthinator_Volume)
 
-# Reading in BPOC data and doing the calculations to compare to google sheets
-# You can pass multiple mutate arguments but I am separating them so I can have check points along the way
+# BPOC calculations
 # Final calculations: Jaunary 2022
 BPOC_data <- read.csv("BDA_CBPOC_Calc.csv", header = T, sep = ",") %>% select(3:10, 12) %>% # selecting certain columns
   rename(BPOC_Dry_Weight = Dry.Weight..g., BPOC_Tin_Weight = Tin.Weight..g., # renaming columns
@@ -66,7 +65,7 @@ Benthic_field_data <- read.csv("Benthic_Field_Data.csv", header = T, sep = ",") 
 
 volumes <- full_join(Benthic_field_data, Benthinator_volume)
 
-# Reading in SBPOC data and doing the calculations to compare to google sheets
+# SBPOC calculations to compare
 # Final calculations: Jaunary 2022
 SBPOC <- read.csv("BDA_SCBPOC_Calc.csv", header = T, sep = ",") %>%
   select(1, 3:10, 12) # selecting certain columns
@@ -107,7 +106,7 @@ Benthic_data <- Benthic_data %>%
                           Date == "8/3/2021" ~ "August",
                           Date == "8/5/2021" ~ "August"))
 
-# write.csv(Benthic_data, "Benthic_data", row.names = F)
+write.csv(Benthic_data, "Final_benthic_df", row.names = F)
 
 benthic_outliers <- Benthic_data %>%
   rstatix::identify_outliers("Total_BPOC_Mass_per_Area") %>%
@@ -115,22 +114,6 @@ benthic_outliers <- Benthic_data %>%
 
 Benthic_data <- anti_join(Benthic_data, benthic_outliers)
 
-#### Simple Plots ####
-# Histogram to see the distribution of the data
-Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) +
-  geom_histogram(binwidth = 10) +
-  facet_grid(rows = vars(Reach)) 
-
-# Boxplots for SE presentation
-# Benthic_data %>% group_by(Site, Date, Reach, Location) %>% summarise(AvgBPOC= mean(Total_BPOC_Mass_per_Area)) %>%
-#   ggplot(aes(Site, AvgBPOC, fill = Site)) + geom_boxplot() +
-#   stat_summary(fun = mean, geom = "point", shape = 20, size = 2, color = "blue", fill = "blue") +
-#   labs(title = "Benthic Particulate Organic Carbon", x = NULL, y = expression(BPOC~(g~C/m^2))) +
-#   theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank(), 
-#                      axis.ticks = element_blank(), axis.text = element_text(colour = "black")) +
-#   scale_fill_brewer(palette = "Spectral", name = "Site") + 
-#   facet_grid(cols = vars((Reach))) +
-#   scale_y_continuous(limits = c(0,120), breaks = c(0,15,30,45,60,75,90,105,120))
 
 
 #### Models for Benthic Data ####
@@ -138,7 +121,10 @@ Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) +
 # storing data as factors insures taht the modeling functions will treat such data correctly. 
 # Factors in R are stored as a vector of integer values with a corresponding set of character values to use
 # when the factor is displayed. Factors levels are always character values. 
-
+# Histogram to see the distribution of the data
+Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) +
+  geom_histogram(binwidth = 10) +
+  facet_grid(rows = vars(Reach)) 
 # Changing Site, Reach, Location, Date, and Replicate to ordered factors.
 Benthic_data[,1:5] <- lapply(Benthic_data[,1:5], as.factor)
 
