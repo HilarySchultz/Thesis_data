@@ -183,33 +183,20 @@ hist(SPOC_data$SPOC)
 finalspocmodel <- glmer(SPOC ~ Date/Site/Reach + (1|Replicate),
                    data = SPOC_data, 
                    family = Gamma(link = "log"))
-plot(spocmodeltest)
-Anova(spocmodeltest)
-AIC(spocmodeltest) # -129.5816
-AICc(spocmodeltest) # -79.45506
-summary(spocmodeltest)
+plot(finalspocmodel)
+Anova(finalspocmodel)
+AIC(finalspocmodel) # -129.5816
+AICc(finalspocmodel) # -79.45506
+summary(finalspocmodel)
 
 #### Post-hoc Tests ####
-# For Ribbon plot
+### Emmeans
 spoc_emm <- emmeans(finalspocmodel, ~ Reach|Date|Site,
                    type = "response")
 
 spoc_emm_sum <- summary(spoc_emm)
 
-# For Boxplot
-spoc_reach_emm <- emmeans(spocmodel1, ~ Reach,
-                                type = "response")
-
-### CLD
-spoc_reach_emm_cld <- cld(spoc_reach_emm,
-                     alpha = 0.05, 
-                     Letters = letters,
-                     decreasing = TRUE)
-spoc_reach_emm_cld$.group = gsub(" ", "", spoc_reach_emm_cld$.group)
-spoc_reach_emm_cld <- arrange(spoc_reach_emm_cld, Reach)
-
 #### SPOC Ribbon Plot ####
-
 ggplot(data = spoc_emm_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
@@ -236,27 +223,6 @@ ggplot(data = spoc_emm_sum) +
         axis.text = element_text(colour = "black"), 
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   facet_grid(~Site)
-
-#### SPOC Boxplot ####
-ggplot(data = SPOC_data, aes(x = Reach, y = SPOC)) +
-  geom_boxplot(aes(fill = Reach)) +
-  geom_point(data = spoc_reach_emm_cld, aes(x = Reach, y = response), size = 1, shape = 19,
-             color = "blue") +
-  geom_text(data = spoc_reach_emm_cld, aes(x = Reach, y = response, label= .group,
-                                          vjust = -2.2, hjust = 0.5),
-            size = 5, position = position_dodge(0.5), color = "black") +
-  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  # scale_fill_brewer(palette = "Spectral") +
-  labs(title = "Suspended Organic Carbon Concentrations", 
-       x = NULL,
-       y = expression(SPOC~(g~C~ml^-1))) +
-  theme_bw() + 
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black", size = 12),
-        # axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(), 
-        legend.position = "none") +
-  scale_x_discrete(labels = c("Treatment", "Reference"))
 
 #### DOC SPOC Ratios ####
 DOC <- DOC_data %>%
