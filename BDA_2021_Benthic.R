@@ -130,6 +130,7 @@ Benthic_data$Location <- ordered(Benthic_data$Location, levels = c("LWR", "MID",
 Benthic_data$Replicate <- ordered(Benthic_data$Replicate, levels = c(1:3))
 
 ### GLMM ###
+# Final model decided 3/17/22
 finalbenthicmodel <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach + (1|Location/Replicate),
               data = Benthic_data,
               family = Gamma(link="log"))
@@ -151,7 +152,6 @@ overdisp_fun <- function(model) {
 overdisp_fun(finalbenthicmodel) # Model is not overdispersed
 
 #### Post-hoc tests ####
-
 ### Emmeans
 benthic_emm <- emmeans(finalbenthicmodel, ~ Reach|Date|Site,
                        type = "response")
@@ -172,9 +172,9 @@ benthic_reach_cld <- arrange(benthic_reach_cld, Reach, Site, Date)
 #### PLOTS ####
 ggplot() +
   geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
-  geom_point(data = benthic_cld, aes(x = Reach, y = response), size = 1, shape = 19,
+  geom_point(data = benthic_reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
              color = "blue") +
-  geom_text(data = benthic_cld, aes(x = Reach, y = response, label= .group,
+  geom_text(data = benthic_reach_cld, aes(x = Reach, y = response, label= .group,
                                        vjust = -2.1, hjust = 0.5),
             size = 6, position = position_dodge(0.5), color = "red") +
   geom_text(aes()) +
@@ -191,6 +191,7 @@ ggplot() +
   theme(axis.text = element_text(size = 12)) +
   facet_grid(Date~Site) 
 
-#rep(-1.8, 5), 2, rep(-1.8, 5)
+# This code is to change the orientation of the letter display
+# rep(-1.8, 5), 2, rep(-1.8, 5)
 
 
