@@ -1,13 +1,3 @@
-# # library(Rmisc)
-# library(dplyr)
-# library(tidyverse)
-# # library(lme4)
-# # library(lsmeans)
-# library(car)
-# # library(readtext)
-# # library(vroom)
-# library(lubridate)
-
 library(multcomp) # for doing elegant pairwise comparisons
 library(Rmisc)  # for summarySE function to summarize data frame
 library(boot) # for diagnostics for GLM
@@ -198,51 +188,118 @@ Anova(bmodel3) # Date, Reach, Location are ***
 AICc(bmodel3)  # 1349.928
 AIC(bmodel3) # 1348.961
 
+test <- glmer(Total_BPOC_Mass_per_Area ~ Site/Reach/Location*Date + (1|Replicate),
+              data = Benthic_data, 
+              nAGQ = 0,
+              family = Gamma(link="log"))
+plot(test)
+Anova(test)
+AICc(test)  # 1381.576
+AIC(test) # 1318.368
+
+finalbenthicmodel <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach + (1|Location/Replicate),
+              data = Benthic_data,
+              family = Gamma(link="log"))
+plot(test1)
+Anova(test1)
+AICc(test1)  # 1301.195
+AIC(test1) # 1294.401
+
+test2 <- glmer(Total_BPOC_Mass_per_Area ~ Date*Site*Reach + (1|Location/Replicate),
+               data = Benthic_data,
+               family = Gamma(link="log"))
+plot(test2)
+Anova(test2)
+AICc(test2)  # 1307.7
+AIC(test2) # 1300.906
+
+anova(test1, test2)
+
+bmodelnest <- glmer(Total_BPOC_Mass_per_Area ~ Date + Reach + (1|Location/Replicate) + (1|Site),
+                data = Benthic_data,
+                family = Gamma(link="log")) 
+plot(bmodelnest) # Bunched in the lower left-hand corner. 
+Anova(bmodelnest) # Date, Reach, Location are ***
+AICc(bmodelnest)  # 1339.944
+AIC(bmodelnest) # 1338.978
+# Here, with the random effects nesting we are saying:
+# The intercept varies among locations and among replicates within locations (nested)
+# (1|Location/Replicate) = (1|Location) + (1|Location:Replicate)
+
+overdisp_fun <- function(model) {
+  rdf <- df.residual(model)
+  rp <- residuals(model,type="pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+
+overdisp_fun(bmodelnest) # This model has less dispersion
+overdisp_fun(bmodel)
+overdisp_fun(finalbenthicmodel)
+
+
+quasi_table <- function(model,ctab=coef(summary(model)),
+                        phi=overdisp_fun(model)["ratio"]) {
+  qctab <- within(as.data.frame(ctab),
+                  {   `Std. Error` <- `Std. Error`*sqrt(phi)
+                  `z value` <- Estimate/`Std. Error`
+                  `Pr(>|z|)` <- 2*pnorm(abs(`z value`), lower.tail=FALSE)
+                  })
+  return(qctab)
+}
+printCoefmat(quasi_table(bmodelnest),digits=3)
+
+
 #### Post-hoc tests ####
 
 ### Emmeans
 # Reach by Date and Location
-benthic_reach_emm <- emmeans(bmodel, ~ Reach|Date|Location,
+benthic_emm <- emmeans(finalbenthicmodel, ~ Reach|Date|Site,
                        type = "response")
-benthic_reach_emm_sum <- summary(benthic_reach_emm)
+benthic_emm_sum <- summary(benthic_emm)
 
 # Reach by Reach
-benthic_reachbyreach_emm <- emmeans(bmodel, ~ Reach,
-                             type = "response")
-benthic_reachbyreach_emm_sum <- summary(benthic_reachbyreach_emm)
+# benthic_reach_emm <- emmeans(finalbenthicmodel, ~ Reach,
+#                              type = "response")
+# benthic_reach_emm_sum <- summary(benthic_reachbyreach_emm)
 
 # Reach by Date
-benthic_reachdate_emm <- emmeans(bmodel, ~ Reach|Date,
-                             type = "response")
-benthic_reachdate_emm_sum <- summary(benthic_reachdate_emm)
+# benthic_reachdate_emm <- emmeans(finalbenthicmodel, ~ Reach|Date,
+#                              type = "response")
+# benthic_reachdate_emm_sum <- summary(benthic_reachdate_emm)
 
 ### CLD
 # Reach by Date and Location
-benthic_reach_cld <- cld(benthic_reach_emm,
-                 by = c("Location", "Date"),
+benthic_reach_cld <- cld(benthic_emm,
+                 by = c("Site", "Date"),
                  alpha = 0.05, 
                  Letters = letters,
                  decreasing = TRUE)
 benthic_reach_cld$.group = gsub(" ", "", benthic_reach_cld$.group)
-benthic_reach_cld <- arrange(benthic_reach_cld, Reach, Location, Date)
+benthic_reach_cld <- arrange(benthic_reach_cld, Reach, Site, Date)
+
+
+
 
 # Reach by Reach
-benthic_reachbyreach_cld <- cld(benthic_reachbyreach_emm,
-                         # by = "Reach",
+benthic_cld <- cld(benthic_reachbyreach_emm,
+                         by = c("Site", "Date"),
                          alpha = 0.05, 
                          Letters = letters,
                          decreasing = TRUE)
-benthic_reachbyreach_cld$.group = gsub(" ", "", benthic_reachbyreach_cld$.group)
-benthic_reachbyreach_cld <- arrange(benthic_reachbyreach_cld, Reach)
+benthic_cld$.group = gsub(" ", "", benthic_cld$.group)
+benthic_cld <- arrange(benthic_cld, Reach)
 
 # Reach by Date
-benthic_reachdate_cld <- cld(benthic_reachdate_emm,
-                                by = "Date",
-                                alpha = 0.05, 
-                                Letters = letters,
-                                decreasing = TRUE)
-benthic_reachdate_cld$.group = gsub(" ", "", benthic_reachdate_cld$.group)
-benthic_reachdate_cld <- arrange(benthic_reachdate_cld, Reach, Date)
+# benthic_reachdate_cld <- cld(benthic_reachdate_emm,
+#                                 by = "Date",
+#                                 alpha = 0.05, 
+#                                 Letters = letters,
+#                                 decreasing = TRUE)
+# benthic_reachdate_cld$.group = gsub(" ", "", benthic_reachdate_cld$.group)
+# benthic_reachdate_cld <- arrange(benthic_reachdate_cld, Reach, Date)
 
 
 # Asterisks
@@ -253,9 +310,9 @@ benthic_reachdate_cld <- arrange(benthic_reachdate_cld, Reach, Date)
 # Reach by Date 
 ggplot() +
   geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
-  geom_point(data = benthic_reachdate_cld, aes(x = Reach, y = response), size = 1, shape = 19,
+  geom_point(data = benthic_cld, aes(x = Reach, y = response), size = 1, shape = 19,
              color = "blue") +
-  geom_text(data = benthic_reachdate_cld, aes(x = Reach, y = response, label= .group,
+  geom_text(data = benthic_cld, aes(x = Reach, y = response, label= .group,
                                        vjust = -2.1, hjust = 0.5),
             size = 6, position = position_dodge(0.5), color = "red") +
   geom_text(aes()) +
@@ -270,7 +327,7 @@ ggplot() +
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank()) +
   theme(axis.text = element_text(size = 12)) +
-  facet_grid(~Date) 
+  facet_grid(Date~Site) 
 
 # Reach comparison  
 ggplot() +
