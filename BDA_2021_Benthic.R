@@ -138,8 +138,7 @@ Anova(finalbenthicmodel)
 AICc(finalbenthicmodel)  # 1301.195
 AIC(finalbenthicmodel) # 1294.401
 
-
-
+# Checking to see that the model is not overdispersed
 overdisp_fun <- function(model) {
   rdf <- df.residual(model)
   rp <- residuals(model,type="pearson")
@@ -149,22 +148,7 @@ overdisp_fun <- function(model) {
   c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
 }
 
-overdisp_fun(bmodelnest) # This model has less dispersion
-overdisp_fun(bmodel)
-overdisp_fun(finalbenthicmodel)
-
-
-quasi_table <- function(model,ctab=coef(summary(model)),
-                        phi=overdisp_fun(model)["ratio"]) {
-  qctab <- within(as.data.frame(ctab),
-                  {   `Std. Error` <- `Std. Error`*sqrt(phi)
-                  `z value` <- Estimate/`Std. Error`
-                  `Pr(>|z|)` <- 2*pnorm(abs(`z value`), lower.tail=FALSE)
-                  })
-  return(qctab)
-}
-printCoefmat(quasi_table(bmodelnest),digits=3)
-
+overdisp_fun(finalbenthicmodel) # Model is not overdispersed
 
 #### Post-hoc tests ####
 
