@@ -127,46 +127,36 @@ CH4_fluxes %>%
 ## The issue is that you cannot log negative numbers...
 
 
-#### Exploratory CO2 Models ####
-cdioxidemodel <- glmer(CO2_flux_g ~ Date + Reach + (1|Site) + (1|Chamber), 
+#### CO2 Model ####
+finalcdioxidemodel <- glmer(CO2_flux_g ~ Date/Site/Reach + (1|Chamber), 
                        data = CO2_fluxes,
+                       control = glmerControl(optimizer = "bobyqa",
+                                              optCtrl = list(maxfun = 100000)),
                        family = Gamma(link = "log"))
-plot(cdioxidemodel)
-Anova(cdioxidemodel)
-AICc(cdioxidemodel) # 647.1857
-AIC(cdioxidemodel) # 645.9574
+plot(finalcdioxidemodel)
+Anova(finalcdioxidemodel)
+AICc(finalcdioxidemodel) # 592.5527
+AIC(finalcdioxidemodel) # 568.9416
 
-cdioxidemodel1 <- lmer(CO2_flux_g ~ Date + Reach + (1|Site) + (1|Chamber), 
-                       data = CO2_fluxes)
-plot(cdioxidemodel1)
-Anova(cdioxidemodel1)
-AICc(cdioxidemodel1) # 727.0645
-AIC(cdioxidemodel1) # 725.8361
-
+overdisp_fun <- function(model) {
+  rdf <- df.residual(model)
+  rp <- residuals(model,type="pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+overdisp_fun(finalcdioxidemodel) # No overdispersion
 
 #### Post-hoc Test ####
-# Reach by Date
-# For ribbon plot
-cdioxide_reachdate_emm <- emmeans(cdioxidemodel, ~ Reach|Date,
+### Emmeans
+cdioxide_emm <- emmeans(finalcdioxidemodel, ~ Reach|Date|Site,
                        type = "response")
-cdioxide_reachdate_emm_sum <- summary(cdioxide_reachdate_emm)
-
-##
-# Reach by reach
-# For boxplot
-cdioxide_reach_emm <- emmeans(cdioxidemodel, ~ Reach,
-                                  type = "response")
-
-###
-cdioxide_reach_cld <- cld(cdioxide_reach_emm,
-                         alpha = 0.05, 
-                         Letters = letters)
-cdioxide_reach_cld$.group <- gsub(" ", "", cdioxide_reach_cld$.group)
-
+cdioxide_emm_sum <- summary(cdioxide_emm)
 
 #### CO2 PLOTS ####
 # Ribbon plot
-ggplot(data = cdioxide_reachdate_emm_sum) +
+ggplot(data = cdioxide_emm_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
@@ -190,30 +180,10 @@ ggplot(data = cdioxide_reachdate_emm_sum) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  facet_grid(~Site)
 
 # labels = c("6/7/2021", "", "6/28/2021", "", "7/26/2021", "", "8/25/2021", ""))
-
-## Boxplot
-ggplot(data = CO2_fluxes, aes(x = Reach, y = CO2_flux_g)) +
-  geom_boxplot(aes(fill = Reach)) +
-  geom_point(data = cdioxide_reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
-             color = "blue") +
-  geom_text(data = cdioxide_reach_cld, aes(x = Reach, y = response, label= .group,
-                                           vjust = -2.2, hjust = 0.5),
-            size = 5, position = position_dodge(0.5), color = "black") +
-  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("#3399FF", "#CC99FF")) +
-  # scale_fill_brewer(palette = "Spectral") +
-  labs(title = "Riparian Soil Carbon Dioxide Fluxes", 
-       x = NULL,
-       y = expression(CO[2]~Fluxes~(g~C~m^-2~d^-1))) +
-  theme_bw() + 
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black", size = 12),
-        # axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(), 
-        legend.position = "none") +
-  scale_x_discrete(labels = c("Treatment", "Reference"))
 
 #### CH4 GLMM ####
 methanemodel <- lmer(CH4_flux_g ~ Date + Reach + (1|Site) + (1|Chamber),
@@ -222,12 +192,17 @@ Anova(methanemodel)
 AICc(methanemodel)
 AIC(methanemodel)
 
+finalmethanemodel <- lmer(CH4_flux_g ~ Date/Site/Reach + (1|Chamber),
+                     data = CH4_fluxes)
+Anova(methanemodeltest)
+AICc(methanemodeltest)
+AIC(methanemodeltest)
 #### Post-hoc ####
 ### Emmeans
 # Reach by Date for ribbon plot
-methane_reachdate_emm <- emmeans(methanemodel, ~ Reach|Date,
+methane_emm <- emmeans(finalmethanemodel, ~ Reach|Date,
                        type = "response")
-methane_reachdate_emm_sum <- summary(methane_reachdate_emm)
+methane_emm_sum <- summary(methane_emm)
 
 # Reach by reach
 # Boxplot 
@@ -242,7 +217,7 @@ methane_reach_cld$.group <- gsub(" ", "", methane_reach_cld$.group)
 
 
 #### Methane Plots ####
-ggplot(data = methane_reachdate_emm_sum) +
+ggplot(data = methane_emm_sum) +
   geom_ribbon(aes(x = Date,
                   ymin = lower.CL, 
                   ymax = upper.CL,
@@ -266,7 +241,8 @@ ggplot(data = methane_reachdate_emm_sum) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5)) 
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  facet_grid(~Site)
 
 # Boxplot
 ggplot(data = CH4_fluxes, aes(x = Reach, y = CH4_flux_g)) +
