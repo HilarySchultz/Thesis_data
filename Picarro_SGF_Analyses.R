@@ -176,7 +176,7 @@ ggplot(data = cdioxide_emm_sum) +
   scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
   labs(title = "Riparian Soil Carbon Dioxide Fluxes", 
        x = "Date", 
-       y = expression(CO[2]~Fluxes~(g~C/m^2/d))) +
+       y = expression(CO[2]~Fluxes~(g~C~m^-2~d^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
