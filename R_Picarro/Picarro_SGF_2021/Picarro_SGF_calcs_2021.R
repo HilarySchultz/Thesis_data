@@ -57,11 +57,11 @@ plot(slope_df$R2_CO2, slope_df$R2_CH4)
 # Ben and I decided this was appropriate
 CO2_df <- slope_df %>%
   select(-CH4_slope, -R2_CH4) %>%
-  filter(R2_CO2 >= 0.8)
+  filter(R2_CO2 >= 0.8, CO2_slope >= 0)
 
 CO2_df_bad_omit <- slope_df %>%
   select(-CH4_slope, -R2_CH4) %>%
-  filter(R2_CO2 < 0.8, CO2_slope >= 0)
+  filter(R2_CO2 < 0.8)
 
 CH4_df <- slope_df %>%
   select(-CO2_slope, -R2_CO2) %>%
