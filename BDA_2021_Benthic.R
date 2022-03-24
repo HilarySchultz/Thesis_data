@@ -176,7 +176,7 @@ ggplot() +
              color = "blue") +
   geom_text(data = benthic_reach_cld, aes(x = Reach, y = response, label= .group,
                                        vjust = -2.1, hjust = 0.5),
-            size = 6, position = position_dodge(0.5), color = "red") +
+            size = 6, position = position_dodge(0.5), color = "black") +
   geom_text(aes()) +
   scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("#3399FF", "#CC99FF")) +
   # scale_fill_brewer(palette = "Spectral") +
