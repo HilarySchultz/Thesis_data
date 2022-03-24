@@ -1,4 +1,5 @@
 # library(Rmisc)
+# library(conflicted)
 library(dplyr)
 library(tidyverse)
 # library(lme4)
@@ -9,6 +10,7 @@ library(tidyverse)
 library(lubridate)
 
 #### Discharge ####
+# Discharge for only 2022 #
 Discharge <- read.csv("BDA_Discharge.csv", header = T, sep = ",") %>%
   filter(year != 2019, year != 2020, creek != "North Fork Howard", 
          creek != "Little Fish", creek != "Lost Horse") %>%
@@ -19,10 +21,31 @@ Discharge <- read.csv("BDA_Discharge.csv", header = T, sep = ",") %>%
   mutate(Date = Origin + jday, .keep = "unused") %>%
   select(-X, -year) %>%
   rename(Station = us.ds, Site = creek) %>%
-  mutate(Date = format(Date, "%m/%d/%Y")) # Makes date format match DOC dates
+  mutate(Date = format(Date, "%m/%d/%Y")) %>% # Makes date format match DOC dates
+  na.exclude()
+
+# Getting data for just LP
+
+LP_DS <- Discharge %>%
+  filter(Site == "LP", Station == "DS") %>%
+  rename(DS_discharge = mean.discharge.cms) %>%
+  select(-Station)
+
+LP_US <- Discharge %>%
+  filter(Site == "LP", Station == "US") %>%
+  rename(US_discharge = mean.discharge.cms) %>%
+  select(-Station)
+
+LP_2021 <- full_join(LP_DS, LP_US)
+
+LP_2021 %>% ggplot(aes(Date, US_discharge)) +
+  geom_point() + geom_smooth(method = 'lm', se = F)
+
+LP_2021 %>% ggplot(aes(Date, DS_discharge)) +
+  geom_point() + geom_smooth(method = 'lm', se = F)
 
 # 2020 discharge for exterpolation
-discharge_2020 <- read.csv("BDA_Discharge.csv", header = T, sep = ",") %>%
+discharge_2020 <- read.csv("allBDAhydro.csv", header = T, sep = ",") %>%
   filter(year == 2020, creek == "Lost Prairie") %>%
   add_column(Origin = as.Date("2020-01-01")) %>%
   mutate(Date = Origin + jday, .keep = "unused") %>%
@@ -30,24 +53,33 @@ discharge_2020 <- read.csv("BDA_Discharge.csv", header = T, sep = ",") %>%
   rename(Station = us.ds, Site = creek) %>%
   mutate(Date = format(Date, "%m/%d/%Y"))
 
+DS_LP <- discharge_2020 %>% 
+  filter(Station == "DS") %>%
+  rename(DS_discharge = mean.discharge.cms) %>%
+  select(-Station) %>%
+  filter(!is.na(DS_discharge))
+
 US_LP <- discharge_2020 %>% 
   filter(Station == "US") %>%
   rename(US_discharge = mean.discharge.cms) %>%
-  select(-Station)
+  select(-Station) %>%
+  filter(!is.na(US_discharge))
 
 Spring_LP <- discharge_2020 %>% 
   filter(Station == "Spring") %>%
   rename(Spring_discharge = mean.discharge.cms) %>%
-  select(-Station)
+  select(-Station) %>%
+  filter(!is.na(Spring_discharge))
 
-discharge_LP <- full_join(US_LP, Spring_LP) %>%
-  mutate(Percent_diff = US_discharge/Spring_discharge) %>%
-  filter(!is.na(Percent_diff))
+# Full dataframe
+discharge_LP <- join_all(list(DS_LP, US_LP, Spring_LP)) %>%
+  na.exclude()
 
-discharge_LP %>% ggplot(aes(Date, Percent_diff, group = 1)) + 
-  geom_point() + geom_smooth(method = 'lm', se = F)
 
 discharge_LP %>% ggplot(aes(US_discharge, Spring_discharge)) +
+  geom_point() + geom_smooth(method = 'lm', se = F)
+
+discharge_LP %>% ggplot(aes(DS_discharge, Spring_discharge)) +
   geom_point() + geom_smooth(method = 'lm', se = F)
 
 # Just another way to change jday to date
