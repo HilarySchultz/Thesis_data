@@ -106,7 +106,7 @@ Benthic_data <- Benthic_data %>%
                           Date == "8/3/2021" ~ "August",
                           Date == "8/5/2021" ~ "August"))
 
-write.csv(Benthic_data, "Final_benthic_df", row.names = F)
+# write.csv(Benthic_data, "Final_benthic_df", row.names = F)
 
 benthic_outliers <- Benthic_data %>%
   rstatix::identify_outliers("Total_BPOC_Mass_per_Area") %>%
@@ -123,9 +123,9 @@ Benthic_data %>% ggplot(aes(Total_BPOC_Mass_per_Area)) +
   facet_grid(rows = vars(Reach)) 
 
 # Changing Site, Reach, Location, Date, and Replicate to ordered factors.
-Benthic_data[,1:5] <- lapply(Benthic_data[,1:5], as.factor)
+Benthic_data[,1:4] <- lapply(Benthic_data[,1:4], as.factor)
 
-Benthic_data$Date <- ordered(Benthic_data$Date, levels = c("June", "July", "August"))
+# Benthic_data$Date <- ordered(Benthic_data$Date, levels = c("June", "July", "August"))
 Benthic_data$Location <- ordered(Benthic_data$Location, levels = c("LWR", "MID", "UPR"))
 Benthic_data$Replicate <- ordered(Benthic_data$Replicate, levels = c(1:3))
 
@@ -138,6 +138,8 @@ plot(finalbenthicmodel)
 Anova(finalbenthicmodel)
 AICc(finalbenthicmodel)  # 1301.195
 AIC(finalbenthicmodel) # 1294.401
+summary(finalbenthicmodel)
+
 
 # Checking to see that the model is not overdispersed
 overdisp_fun <- function(model) {
@@ -164,7 +166,7 @@ benthic_reach_cld <- cld(benthic_emm,
                  Letters = letters,
                  decreasing = TRUE)
 benthic_reach_cld$.group = gsub(" ", "", benthic_reach_cld$.group)
-benthic_reach_cld <- arrange(benthic_reach_cld, Reach, Site, Date)
+benthic_reach_cld <- arrange(benthic_reach_cld, Date, Site, Reach)
 
 # Asterisks
 # reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
@@ -193,5 +195,64 @@ ggplot() +
 
 # This code is to change the orientation of the letter display
 # rep(-1.8, 5), 2, rep(-1.8, 5)
+
+#### Ranges ####
+benthicrange <- Benthic_data %>%
+  group_by(Site, Reach) %>%
+  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
+# Range values for each Site & Reach across Date
+# FH BDA 172.40974
+# FH REF 35.94535
+# LP BDA 117.40862
+# LP REF 137.98502
+# TP BDA 181.34391
+# TP REF 88.78838
+
+benthicrange1 <- Benthic_data %>%
+  group_by(Site) %>%
+  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
+# Range values for each Site across Date and Reach 
+# FH 173.8667
+# LP 137.9850
+# TP 183.7032
+
+benthicrange2 <- Benthic_data %>%
+  group_by(Reach) %>%
+  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
+# Range values across reaches
+# BDA	182.6206
+# REF	138.2973
+
+benthicrange3 <- Benthic_data %>%
+  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
+# Range value across Date, Site, and Reach
+# 184.0776
+
+benthicsum <- Benthic_data %>%
+  group_by(Site, Reach) %>%
+  summarise(Avg = mean(Total_BPOC_Mass_per_Area))
+# FH BDA 47.803943
+# FH REF 3.349299 
+## 14.27 fold higher in BDA across all months
+# LP BDA 35.942282
+# LP REF 33.900297
+## 1.06 fold higher in BDA across all months
+# TP BDA 43.529526
+# TP REF 24.259833
+## 1.79 fold higher in BDA across all months
+
+benthicsum1 <- Benthic_data %>%
+  group_by(Site) %>%
+  summarise(Avg = mean(Total_BPOC_Mass_per_Area))
+# FH 24.72172
+# LP 34.90203
+# TP 33.71289
+
+benthicsum2 <- Benthic_data %>%
+  group_by(Reach) %>%
+  summarise(Avg = mean(Total_BPOC_Mass_per_Area))
+# BDA 42.35540
+# REF 20.50314
+
 
 

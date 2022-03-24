@@ -178,7 +178,32 @@ Total_range <- DOC_data %>%
 # to the volume, loads should change these data. 
 # What would increase the solubility of DOC in a stream, temperature?
 
+docsum <- DOC_data %>%
+  group_by(Date, Site, Reach) %>%
+  summarise(Avg = mean(Conc_ppm)) 
+# 7/26/2021:FH:REF 1.616053
+# 7/26/2021:TP:BDA 1.630694
+# 8/9/20021:LP:REF 1.369805
 
+docsum1 <- DOC_data %>%
+  group_by(Site, Reach) %>%
+  summarise(Avg = mean(Conc_ppm))
+# FH    BDA    3.40
+# FH    REF    3.08
+## 1.10 fold higher in BDA reach
+# LP    BDA    2.99
+# LP    REF    2.90
+## 1.03 fold higer in BDA reach
+# TP    BDA    2.78
+# TP    REF    2.63
+## 1.06 fold higher in BDA reach
+
+docsum2 <- DOC_data %>%
+  group_by(Reach) %>%
+  summarise(Avg = mean(Conc_ppm))
+# BDA 3.056778
+# REF 2.874487
+## 1.063417 fold higher in BDA reaches
 
 #### SPOC #####
 SPOC_data <- read.csv("BDA_SPOC_Calc.csv", header = T, sep = ",") %>% 
@@ -325,6 +350,40 @@ spocrange2 <- SPOC_data %>%
 
 # Really need to see how load would change what we are seeing. 
 # Was there higher discharge on the days we see a spike at LP? 
+
+spocsum <- SPOC_data %>%
+  group_by(Date, Site, Reach) %>%
+  summarise(Avg = mean(SPOC))
+# 6/14/2021:LP:REF 2.307143 
+# 6/28/2021:LP:BDA 1.474748
+# 7/12/2021:FH:BDA 1.634518
+# 8/9/2021:FH:BDA 1.625
+# 8/9/2021:LP:BDA 2.688172
+# 8/9/2021:TP:BDA 1.446808
+# 8/25/2021:LP:BDA 6.452381
+# 9/7/2021:FH:BDA 1.46988
+# 9/7/2021:TP:BDA 1.884616
+
+spocsum1 <- SPOC_data %>%
+  group_by(Site, Reach) %>%
+  summarise(Avg = mean(SPOC))
+# FH    BDA   0.974
+# FH    REF   0.775
+## 1.256774
+# LP    BDA   0.534
+# LP    REF   0.394
+## 1.35533
+# TP    BDA   0.321
+# TP    REF   0.282
+## 1.138298
+
+spocsum2 <- SPOC_data %>%
+  group_by(Reach) %>%
+  summarise(Avg = mean(SPOC))
+# BDA   0.612
+# REF   0.483
+## 1.267081
+
 
 
 #### DOC SPOC Ratios ####
