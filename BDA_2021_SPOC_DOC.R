@@ -174,7 +174,9 @@ Total_range <- DOC_data %>%
 # Range value across Date, Site, and Reach
 # 6.708
 
-
+# Might not expect to see a difference in DOC because you are already normalizing
+# to the volume, loads should change these data. 
+# What would increase the solubility of DOC in a stream, temperature?
 
 
 
@@ -321,7 +323,8 @@ spocrange2 <- SPOC_data %>%
 # BDA	1.87
 # REF	1.67
 
-
+# Really need to see how load would change what we are seeing. 
+# Was there higher discharge on the days we see a spike at LP? 
 
 
 #### DOC SPOC Ratios ####
