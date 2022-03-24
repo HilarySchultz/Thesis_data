@@ -33,39 +33,41 @@ DOC_data <- anti_join(DOC, doc_outliers) %>%
 # Setting this so the sampling dates are all at the start of the week
 DOC_data <- DOC_data %>%
   mutate(Time = if_else(Time == "07/14/2021", "07/15/2021", Time)) %>% # Date was off 
-  mutate(Date = case_when(Time == "05/31/2021" ~ "6/1/2021",
-                          Time == "06/02/2021" ~ "6/1/2021",
-                          Time == "06/03/2021" ~ "6/1/2021",
-                          Time == "06/07/2021" ~ "6/7/2021",
-                          Time == "06/08/2021" ~ "6/7/2021",
-                          Time == "06/10/2021" ~ "6/7/2021",
-                          Time == "06/14/2021" ~ "6/14/2021",
-                          Time == "06/15/2021" ~ "6/14/2021",
-                          Time == "06/17/2021" ~ "6/14/2021",
-                          Time == "06/28/2021" ~ "6/28/2021",
-                          Time == "06/29/2021" ~ "6/28/2021",
-                          Time == "07/01/2021" ~ "6/28/2021",
-                          Time == "07/12/2021" ~ "7/12/2021",
-                          Time == "07/13/2021" ~ "7/12/2021",
-                          Time == "07/15/2021" ~ "7/12/2021",
-                          Time == "07/26/2021" ~ "7/26/2021",
-                          Time == "07/27/2021" ~ "7/26/2021",
-                          Time == "07/29/2021" ~ "7/26/2021", 
-                          Time == "08/09/2021" ~ "8/9/2021",
-                          Time == "08/10/2021" ~ "8/9/2021",
-                          Time == "08/12/2021" ~ "8/9/2021",
-                          Time == "08/25/2021" ~ "8/25/2021",
-                          Time == "08/26/2021" ~ "8/25/2021",
-                          Time == "08/29/2021" ~ "8/25/2021",
-                          Time == "09/07/2021" ~ "9/7/2021",
-                          Time == "09/08/2021" ~ "9/7/2021",
-                          Time == "09/10/2021" ~ "9/7/2021" ))
+  mutate(Date = case_when(Time == "05/31/2021" ~ "06/01/2021",
+                          Time == "06/02/2021" ~ "06/01/2021",
+                          Time == "06/03/2021" ~ "06/01/2021",
+                          Time == "06/07/2021" ~ "06/07/2021",
+                          Time == "06/08/2021" ~ "06/07/2021",
+                          Time == "06/10/2021" ~ "06/07/2021",
+                          Time == "06/14/2021" ~ "06/14/2021",
+                          Time == "06/15/2021" ~ "06/14/2021",
+                          Time == "06/17/2021" ~ "06/14/2021",
+                          Time == "06/28/2021" ~ "06/28/2021",
+                          Time == "06/29/2021" ~ "06/28/2021",
+                          Time == "07/01/2021" ~ "06/28/2021",
+                          Time == "07/12/2021" ~ "07/12/2021",
+                          Time == "07/13/2021" ~ "07/12/2021",
+                          Time == "07/15/2021" ~ "07/12/2021",
+                          Time == "07/26/2021" ~ "07/26/2021",
+                          Time == "07/27/2021" ~ "07/26/2021",
+                          Time == "07/29/2021" ~ "07/26/2021", 
+                          Time == "08/09/2021" ~ "08/09/2021",
+                          Time == "08/10/2021" ~ "08/09/2021",
+                          Time == "08/12/2021" ~ "08/09/2021",
+                          Time == "08/25/2021" ~ "08/25/2021",
+                          Time == "08/26/2021" ~ "08/25/2021",
+                          Time == "08/29/2021" ~ "08/25/2021",
+                          Time == "09/07/2021" ~ "09/07/2021",
+                          Time == "09/08/2021" ~ "09/07/2021",
+                          Time == "09/10/2021" ~ "09/07/2021" )) 
 
 # Changing Time, Date, Sample, Site, Reach, Replicate to ordered factors
 DOC_data[,1:5] <- lapply(DOC_data[,1:5], as.factor)
-DOC_data$Date <- ordered(DOC_data$Date, 
-                         levels = c("6/1/2021", "6/7/2021", "6/14/2021", "6/28/2021", 
-                                    "7/12/2021", "7/26/2021", "8/9/2021", "8/25/2021", "9/7/2021"))
+
+# DOC_data$Date <- ordered(DOC_data$Date, 
+#                          levels = c("6/1/2021", "6/7/2021", "6/14/2021", "6/28/2021", 
+#                                     "7/12/2021", "7/26/2021", "8/9/2021", "8/25/2021", "9/7/2021"))
+
 DOC_data$Replicate <- ordered(DOC_data$Replicate, levels = c(1:3))
 
 #### DOC Models ####
@@ -81,13 +83,24 @@ finaldocmodel <- glmer(Conc_ppm ~ Date/Site/Reach + (1|Replicate),
 plot(finaldocmodel)
 Anova(finaldocmodel)
 AIC(finaldocmodel) # 360.3364
-AICc(finaldocmodel) # 422.9247
+AICc(finaldocmodel) # 422.924
+summary(finaldocmodel)
+anova(finaldocmodel)
 
 #### Post-hoc tests ####
 ### Emmeans
 doc_emm <- emmeans(finaldocmodel, ~ Reach|Date|Site,
                        type = "response")
 doc_emm_sum <- summary(doc_emm)
+
+### CLD 
+doc_cld <- cld(doc_emm,
+                         by = c("Site", "Date"),
+                         alpha = 0.05, 
+                         Letters = letters,
+                         decreasing = TRUE)
+doc_cld$.group = gsub(" ", "", doc_cld$.group)
+doc_cld <- arrange(doc_cld, Date, Site, Reach)
 
 #### DOC Ribbon Plot ####
 ggplot(data = doc_emm_sum) +
@@ -117,6 +130,54 @@ ggplot(data = doc_emm_sum) +
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
           facet_grid(~Site)
 
+#### Ranges/other info ####
+Reach_ranges <- DOC_data %>%
+  group_by(Date, Site, Reach) %>%
+  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
+# Range values for each Date, Site, and Reach
+# 54 entries
+
+Sitebydate_ranges <- DOC_data %>%
+  group_by(Date, Site) %>%
+  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
+# Range values for each Site & Date across Reaches
+# 27 entries
+
+sitebyreach_ranges <- DOC_data %>%
+  group_by(Site, Reach) %>%
+  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
+# Range values for each Site & Reach across Date
+# FH	BDA	5.878
+# FH	REF	6.119
+# LP	BDA	6.473
+# LP	REF	4.031
+# TP	BDA	4.133
+# TP	REF	3.201
+
+Site_range <- DOC_data %>%
+  group_by(Site) %>%
+  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
+# Range values for each Site across Date and Reach 
+# FH	6.119
+# LP	6.473
+# TP	4.133
+
+Total_reach_ranges <- DOC_data %>%
+  group_by(Reach) %>%
+  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
+# Range values across reaches
+# BDA	6.708
+# REF	6.119
+
+Total_range <- DOC_data %>%
+  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
+# Range value across Date, Site, and Reach
+# 6.708
+
+
+
+
+
 #### SPOC #####
 SPOC_data <- read.csv("BDA_SPOC_Calc.csv", header = T, sep = ",") %>% 
   filter(SPOC > 0, Reach != "GS", Reach != "DS") %>%
@@ -145,33 +206,33 @@ SPOC_data <- SPOC_data %>%
          Time = if_else(Time == "9/7/2021", "09/07/2021", Time),
          Time = if_else(Time == "9/8/2021", "09/08/2021", Time),
          Time = if_else(Time == "9/10/2021", "09/10/2021", Time)) %>%
-  mutate(Date = case_when(Time == "06/14/2021" ~ "6/14/2021",
-                          Time == "06/15/2021" ~ "6/14/2021",
-                          Time == "06/17/2021" ~ "6/14/2021",
-                          Time == "06/28/2021" ~ "6/28/2021",
-                          Time == "06/29/2021" ~ "6/28/2021",
-                          Time == "07/01/2021" ~ "6/28/2021",
-                          Time == "07/12/2021" ~ "7/12/2021",
-                          Time == "07/13/2021" ~ "7/12/2021",
-                          Time == "07/15/2021" ~ "7/12/2021",
-                          Time == "07/26/2021" ~ "7/26/2021",
-                          Time == "07/27/2021" ~ "7/26/2021",
-                          Time == "07/29/2021" ~ "7/26/2021", 
-                          Time == "08/09/2021" ~ "8/9/2021",
-                          Time == "08/10/2021" ~ "8/9/2021",
-                          Time == "08/12/2021" ~ "8/9/2021",
-                          Time == "08/25/2021" ~ "8/25/2021",
-                          Time == "08/26/2021" ~ "8/25/2021",
-                          Time == "08/29/2021" ~ "8/25/2021",
-                          Time == "09/07/2021" ~ "9/7/2021",
-                          Time == "09/08/2021" ~ "9/7/2021",
-                          Time == "09/10/2021" ~ "9/7/2021" ))
+  mutate(Date = case_when(Time == "06/14/2021" ~ "06/14/2021",
+                          Time == "06/15/2021" ~ "06/14/2021",
+                          Time == "06/17/2021" ~ "06/14/2021",
+                          Time == "06/28/2021" ~ "06/28/2021",
+                          Time == "06/29/2021" ~ "06/28/2021",
+                          Time == "07/01/2021" ~ "06/28/2021",
+                          Time == "07/12/2021" ~ "07/12/2021",
+                          Time == "07/13/2021" ~ "07/12/2021",
+                          Time == "07/15/2021" ~ "07/12/2021",
+                          Time == "07/26/2021" ~ "07/26/2021",
+                          Time == "07/27/2021" ~ "07/26/2021",
+                          Time == "07/29/2021" ~ "07/26/2021", 
+                          Time == "08/09/2021" ~ "08/09/2021",
+                          Time == "08/10/2021" ~ "08/09/2021",
+                          Time == "08/12/2021" ~ "08/09/2021",
+                          Time == "08/25/2021" ~ "08/25/2021",
+                          Time == "08/26/2021" ~ "08/25/2021",
+                          Time == "08/29/2021" ~ "08/25/2021",
+                          Time == "09/07/2021" ~ "09/07/2021",
+                          Time == "09/08/2021" ~ "09/07/2021",
+                          Time == "09/10/2021" ~ "09/07/2021" ))
 
 SPOC_data[,1:5] <- lapply(SPOC_data[,1:5], as.factor)
 
-SPOC_data$Date <- ordered(SPOC_data$Date, 
-                         levels = c("6/14/2021", "6/28/2021","7/12/2021", "7/26/2021", 
-                                    "8/9/2021", "8/25/2021", "9/7/2021"))
+# SPOC_data$Date <- ordered(SPOC_data$Date,
+#                          levels = c("6/14/2021", "6/28/2021","7/12/2021", "7/26/2021",
+#                                     "8/9/2021", "8/25/2021", "9/7/2021"))
 SPOC_data$Replicate <- ordered(SPOC_data$Replicate, 
                                levels = c(1:3))
 hist(SPOC_data$SPOC)
@@ -195,6 +256,15 @@ spoc_emm <- emmeans(finalspocmodel, ~ Reach|Date|Site,
                    type = "response")
 
 spoc_emm_sum <- summary(spoc_emm)
+
+### CLD
+spoc_cld <- cld(spoc_emm,
+               by = c("Site", "Date"),
+               alpha = 0.05, 
+               Letters = letters,
+               decreasing = TRUE)
+spoc_cld$.group = gsub(" ", "", spoc_cld$.group)
+spoc_cld <- arrange(spoc_cld, Date, Site, Reach)
 
 #### SPOC Ribbon Plot ####
 ggplot(data = spoc_emm_sum) +
@@ -223,6 +293,36 @@ ggplot(data = spoc_emm_sum) +
         axis.text = element_text(colour = "black"), 
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   facet_grid(~Site)
+
+#### Ranges ####
+spocrange <- SPOC_data %>%
+  group_by(Site, Reach) %>%
+  summarise(Range = max(SPOC)- min(SPOC))
+# Range values for each Site & Reach across Date
+# FH	BDA	0.94
+# FH	REF	0.83
+# LP	BDA	1.87
+# LP	REF	1.61
+# TP	BDA	0.57
+# TP	REF	0.63
+
+spocrange1 <- SPOC_data %>%
+  group_by(Site) %>%
+  summarise(Range = max(SPOC)- min(SPOC))
+# Range values for each Site across Date and Reach 
+# FH	1.04
+# LP	1.87
+# TP	0.63
+
+spocrange2 <- SPOC_data %>%
+  group_by(Reach) %>%
+  summarise(Range = max(SPOC)- min(SPOC))
+# Range values across reaches
+# BDA	1.87
+# REF	1.67
+
+
+
 
 #### DOC SPOC Ratios ####
 DOC <- DOC_data %>%
