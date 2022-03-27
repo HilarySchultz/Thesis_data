@@ -106,8 +106,8 @@ CH4_fluxes <- anti_join(CH4_fluxes, CH4_outliers)
 # These .csv will have outliers removed as well as new ordered and factored variables
 # There was just going to be too much going on in this script
 
-write.csv(CH4_fluxes, "Methane_data.csv", row.names = F)
-write.csv(CO2_fluxes, "CarbonDioxide_data.csv", row.names = F)
+# write.csv(CH4_fluxes, "Methane_data.csv", row.names = F)
+# write.csv(CO2_fluxes, "CarbonDioxide_data.csv", row.names = F)
 
 # Covariates: soil moisture, soil temperature, and EC (SOC - in another RScript)
 #### Histograms to see the distribution of the data ####
@@ -288,17 +288,16 @@ ggplot(data = methane_emm_sum) +
                 color = Reach), 
             lwd = 1) +
   scale_y_continuous(expand = c(0,0)) +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_color_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) +
-  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
+  scale_x_discrete(expand = c(0,0), guide = guide_axis(angle = 45)) +
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
   labs(title = "Riparian Soil Methane Fluxes", 
        x = "Date", 
        y = expression(CH[4]~Fluxes~(g~C~m^-2~d^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  facet_grid(~Site)
+        axis.text = element_text(colour = "black")) +
+  facet_grid(rows = vars(Site))
 
 
 ch4sum1 <- CH4_fluxes %>%
@@ -346,7 +345,45 @@ methanerange3 <- CH4_fluxes %>%
 HydraGO_data <- CO2_fluxes %>%
   select(Date, Site, Chamber, Reach, Soil_Moisture_Percent, Soil_Temp_C, Soil_Moisture_wfv, EC)
 
+hist(HydraGO_data$Soil_Moisture_wfv)
+
+soillm <- lmer(Soil_Moisture_wfv ~ Date/Site/Reach + (1|Chamber),
+                                         data = HydraGO_data)
+plot(soillm)
+Anova(soillm)
+soillm_emm <- emmeans(soillm, ~ Reach|Date|Site,
+                        type = "response")
+soillm_emm_sum <- summary(soillm_emm)
+
+
 ## Plots
+ggplot(data = soillm_emm_sum) +
+  geom_ribbon(aes(x = Date,
+                  ymin = lower.CL, 
+                  ymax = upper.CL,
+                  group = Reach,
+                  fill = Reach), 
+              alpha = 0.40, 
+              color = NA) + # opaqueness of the CI
+  # fill = "#3984ff") +
+  geom_line(aes(x = Date, 
+                y = emmean, 
+                group = Reach, 
+                color = Reach), 
+            lwd = 1) +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0), guide = guide_axis(angle = 45)) +
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Riparian Soil Moisture", 
+       x = "Date", 
+       y = "Soil Moisture (wfv)") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black")) +
+  facet_grid(rows = vars(Site))
+
+
 HydraGO_data %>%
   group_by(Date, Site, Reach) %>%
   summarise(Avg = mean(Soil_Moisture_Percent)) %>%
@@ -365,4 +402,21 @@ HydraGO_data %>%
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   facet_grid(~Site)
 
+HydraGO_data %>%
+  group_by(Date, Site, Reach) %>%
+  summarise(Avg = mean(Soil_Moisture_Percent)) %>%
+  ggplot(aes(Date, Avg, color = Reach, group = Reach)) +
+  geom_line(lwd = 1) +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Riparian Soil Moisture", 
+       x = "Date", 
+       y = "Soil Moisture (%)") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black"), 
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  facet_grid(rows = vars(Site))
 
