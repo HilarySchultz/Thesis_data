@@ -10,7 +10,7 @@ library(PerformanceAnalytics) # for making amazing correlation plots
 library(tidyverse)  # loads several useful packages, including ggplot2, 
 # tidyr, and dplyr
 library(lubridate)
-library(ggpubr)
+# library(ggpubr)
 
 #### DOC #### 
 DOC <- read.csv("DOC_Data.csv", header = T, sep = ",") %>% 
@@ -119,16 +119,16 @@ ggplot(data = doc_emm_sum) +
             lwd = 1) +
   scale_y_continuous(expand = c(0,0)) +
   scale_x_discrete(expand = c(0,0)) +
-  scale_color_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) +
-  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
-  labs(title = "Dissolved Organic Carbon Concentrations", 
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Dissolved Organic Carbon", 
        x = "Date", 
        y = expression(Concentration~(mg~C~L^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-          facet_grid(~Site)
+          facet_grid(rows = vars(Site))
 
 #### Ranges/other info ####
 Reach_ranges <- DOC_data %>%
@@ -310,16 +310,16 @@ ggplot(data = spoc_emm_sum) +
             lwd = 1) +
   scale_y_continuous(expand = c(0,0)) +
   scale_x_discrete(expand = c(0,0)) +
-  scale_color_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) +
-  scale_fill_manual(name = "Reach", labels = c("BDA", "Reference"), values = c("Blue", "Purple")) + 
-  labs(title = "Particulate Organic Carbon Concentrations", 
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Suspended Particulate Organic Carbon", 
        x = "Date", 
        y = expression(Concentration~(mg~C~L^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  facet_grid(~Site)
+  facet_grid(rows = vars(Site))
 
 #### Ranges ####
 spocrange <- SPOC_data %>%
