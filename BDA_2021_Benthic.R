@@ -9,7 +9,7 @@ library(AICcmodavg) # for comparing models
 library(PerformanceAnalytics) # for making amazing correlation plots
 library(tidyverse)  # loads several useful packages, including ggplot2, 
 # tidyr, and dplyr
-
+library(ggpubr)
 #### BENTHIC CALCULATIONS ####
 
 # FBPOC calculations
@@ -169,15 +169,15 @@ benthic_reach_cld$.group = gsub(" ", "", benthic_reach_cld$.group)
 benthic_reach_cld <- arrange(benthic_reach_cld, Date, Site, Reach)
 
 # Asterisks
-# reach_cld$.group <- if_else(reach_cld$.group == "b", "*","")
+benthic_reach_cld$.group <- if_else(benthic_reach_cld$.group == "b", "*","")
 
 #### PLOTS ####
 ggplot() +
   geom_boxplot(data = Benthic_data, aes(x = Reach, y = Total_BPOC_Mass_per_Area, fill = Reach)) +
-  geom_point(data = benthic_reach_cld, aes(x = Reach, y = response), size = 1, shape = 19,
-             color = "blue") +
+  geom_point(data = benthic_reach_cld, aes(x = Reach, y = response), size = 1, shape = 8,
+             color = "darkred") +
   geom_text(data = benthic_reach_cld, aes(x = Reach, y = response, label= .group,
-                                       vjust = -2.1, hjust = 0.5),
+                                       vjust = -3, hjust = 0.5),
             size = 6, position = position_dodge(0.5), color = "black") +
   geom_text(aes()) +
   scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("#3399FF", "#CC99FF")) +
@@ -192,6 +192,7 @@ ggplot() +
         axis.ticks.x = element_blank()) +
   theme(axis.text = element_text(size = 12)) +
   facet_grid(Date~Site) 
+
 
 # This code is to change the orientation of the letter display
 # rep(-1.8, 5), 2, rep(-1.8, 5)
@@ -254,5 +255,93 @@ benthicsum2 <- Benthic_data %>%
 # BDA 42.35540
 # REF 20.50314
 
+#### Data for proportions ####
+Benthic_sum <- Benthic_data %>%
+  mutate(Coarse_POC = SBPOC_Carbon_Mass_per_Area + BPOC_Carbon_Mass_per_Area) %>%
+  group_by(Date, Site, Reach) %>%
+  summarise(mean_CBPOC = mean(Coarse_POC), mean_FBPOC = mean(FBPOC_Carbon_Mass_per_Area)) %>%
+  mutate(Total_mean_BPOC = mean_CBPOC + mean_FBPOC) %>%
+  gather(mean_CBPOC, mean_FBPOC, key = "sample", value = "value")
+
+Benthic_sum$Date <- ordered(Benthic_sum$Date, levels = c("June", "July", "August"))
+levels(Benthic_sum$Reach) <- c("Treatment", "Reference")
+
+FH_bar <- Benthic_sum %>%
+  filter(Site == "FH") %>%
+  ggplot(aes(Date, value, fill = sample)) +
+  geom_bar(position="dodge", stat="identity") +
+  facet_grid(rows = vars(Reach)) +
+  geom_point(aes(y = Total_mean_BPOC, color = "Total BPOC")) +
+  labs(title = "Fish Creek", 
+       x = NULL, 
+       y = expression(Benthic~Particulate~Organic~Carbon~(g~C~m^-2))) +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black")) +
+  theme(axis.text = element_text(size = 12)) +
+  scale_fill_manual(name = "Particulate \nCarbon", labels = c("Coarse", "Fine"), 
+                    values = c("#F8766D", "#00BFC4")) +
+  scale_color_manual(name = NULL, values = c("Total BPOC" = "black")) +
+  guides(fill = guide_legend(override.aes = list(shape = NA))) +
+  ylim(0,80)
 
 
+LP_bar <- Benthic_sum %>%
+  filter(Site == "LP") %>%
+  ggplot(aes(Date, value, fill = sample)) +
+  geom_bar(position="dodge", stat="identity") +
+  facet_grid(rows = vars(Reach)) +
+  geom_point(aes(y = Total_mean_BPOC, color = "Total BPOC")) +
+  labs(title = "Lost Prairie Creek", 
+       x = NULL, 
+       y = expression(BPOC~(g~C~m^-2))) +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black")) +
+  theme(axis.text = element_text(size = 12)) +
+  scale_fill_manual(name = "Particulate \nCarbon", labels = c("Coarse", "Fine"), 
+                    values = c("#F8766D", "#00BFC4")) +
+  scale_color_manual(name = NULL, values = c("Total BPOC" = "black")) +
+  guides(fill = guide_legend(override.aes = list(shape = NA))) +
+  ylim(0,80)
+
+
+TP_bar <- Benthic_sum %>%
+  filter(Site == "TP") %>%
+  ggplot(aes(Date, value, fill = sample)) +
+  geom_bar(position="dodge", stat="identity") +
+  facet_grid(rows = vars(Reach)) +
+  geom_point(aes(y = Total_mean_BPOC, color = "Total BPOC")) +
+  labs(title = "Teepee Creek", 
+       x = NULL, 
+       y = expression(BPOC~(g~C~m^-2))) +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black")) +
+  theme(axis.text = element_text(size = 12)) +
+  scale_fill_manual(name = "Particulate \nCarbon", labels = c("Coarse", "Fine"), 
+                    values = c("#F8766D", "#00BFC4")) +
+  scale_color_manual(name = NULL, values = c("Total BPOC" = "black")) +
+  guides(fill = guide_legend(override.aes = list(shape = NA))) +
+  ylim(0,80)
+
+
+ggarrange(FH_bar +
+            theme(axis.ticks.y = element_blank(),
+                  plot.margin = margin(r = 1) ), 
+          LP_bar + 
+            theme(axis.text.y = element_blank(),
+                  axis.ticks.y = element_blank(),
+                  axis.title.y = element_blank(),
+                  plot.margin = margin(r = 1, l = 1) ), 
+          TP_bar + 
+            theme(axis.text.y = element_blank(),
+                  axis.ticks.y = element_blank(),
+                  axis.title.y = element_blank(),
+                  plot.margin = margin(l = 1)  ),
+          nrow = 1, ncol = 3, 
+          common.legend = TRUE, 
+          legend = "bottom")
+
+# ggplot(Benthic_data, aes(fill=c(Coarse_POC, FBPOC_Carbon_Mass_per_Area), y=value, x=specie)) + 
+#   geom_bar(position="dodge", stat="identity")
