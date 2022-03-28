@@ -351,6 +351,7 @@ soillm <- lmer(Soil_Moisture_wfv ~ Date/Site/Reach + (1|Chamber),
                                          data = HydraGO_data)
 plot(soillm)
 Anova(soillm)
+
 soillm_emm <- emmeans(soillm, ~ Reach|Date|Site,
                         type = "response")
 soillm_emm_sum <- summary(soillm_emm)
@@ -383,25 +384,7 @@ ggplot(data = soillm_emm_sum) +
         axis.text = element_text(colour = "black")) +
   facet_grid(rows = vars(Site))
 
-
-HydraGO_data %>%
-  group_by(Date, Site, Reach) %>%
-  summarise(Avg = mean(Soil_Moisture_Percent)) %>%
-  ggplot()+
-  geom_line(aes(Date, Avg, color = Reach, group = Reach), lwd = 1.5) +
-  scale_y_continuous(expand = c(0,0)) +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
-  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
-  labs(title = "Riparian Soil Moisture", 
-       x = "Date", 
-       y = "Soil Moisture (%)") +
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  facet_grid(~Site)
-
+## Only line plot
 HydraGO_data %>%
   group_by(Date, Site, Reach) %>%
   summarise(Avg = mean(Soil_Moisture_Percent)) %>%
@@ -419,4 +402,46 @@ HydraGO_data %>%
         axis.text = element_text(colour = "black"), 
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   facet_grid(rows = vars(Site))
+
+#### Temperature 
+hist(HydraGO_data$Soil_Temp_C)
+
+templm <- lmer(Soil_Temp_C ~ Date/Site/Reach + (1|Chamber),
+               data = HydraGO_data)
+plot(templm)
+Anova(templm)
+
+templm_emm <- emmeans(templm, ~ Reach|Date|Site,
+                      type = "response")
+templm_emm_sum <- summary(templm_emm)
+
+
+## Temperature plot
+ggplot(data = templm_emm_sum) +
+  geom_ribbon(aes(x = Date,
+                  ymin = lower.CL, 
+                  ymax = upper.CL,
+                  group = Reach,
+                  fill = Reach), 
+              alpha = 0.40, 
+              color = NA) + # opaqueness of the CI
+  # fill = "#3984ff") +
+  geom_line(aes(x = Date, 
+                y = emmean, 
+                group = Reach, 
+                color = Reach), 
+            lwd = 1) +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0), guide = guide_axis(angle = 45)) +
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Riparian Soil Temperature", 
+       x = "Date", 
+       y = "Soil Temperature (°C)") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black")) +
+  facet_grid(rows = vars(Site)) 
+  
+
 
