@@ -110,6 +110,7 @@ doc_cld <- cld(doc_emm,
                          decreasing = TRUE)
 doc_cld$.group = gsub(" ", "", doc_cld$.group)
 doc_cld <- arrange(doc_cld, Date, Site, Reach)
+doc_cld$.group <- if_else(doc_cld$.group == "b", "*","")
 
 #### DOC Ribbon Plot ####
 ggplot(data = doc_emm_sum) +
@@ -126,6 +127,9 @@ ggplot(data = doc_emm_sum) +
                 group = Reach, 
                 color = Reach), 
             lwd = 1) +
+  geom_text(data = doc_cld, aes(x = Date, y = response, label= .group,
+                                 vjust = -1.5, hjust = 0.5),
+            size = 6, position = position_dodge(0.5), color = "black") +
   scale_y_continuous(expand = c(0,0)) +
   scale_x_discrete(expand = c(0,0)) +
   scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
@@ -139,53 +143,7 @@ ggplot(data = doc_emm_sum) +
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
           facet_grid(rows = vars(Site))
 
-#### Ranges/other info ####
-Reach_ranges <- DOC_data %>%
-  group_by(Date, Site, Reach) %>%
-  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
-# Range values for each Date, Site, and Reach
-# 54 entries
-
-Sitebydate_ranges <- DOC_data %>%
-  group_by(Date, Site) %>%
-  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
-# Range values for each Site & Date across Reaches
-# 27 entries
-
-sitebyreach_ranges <- DOC_data %>%
-  group_by(Site, Reach) %>%
-  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
-# Range values for each Site & Reach across Date
-# FH	BDA	5.878
-# FH	REF	6.119
-# LP	BDA	6.473
-# LP	REF	4.031
-# TP	BDA	4.133
-# TP	REF	3.201
-
-Site_range <- DOC_data %>%
-  group_by(Site) %>%
-  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
-# Range values for each Site across Date and Reach 
-# FH	6.119
-# LP	6.473
-# TP	4.133
-
-Total_reach_ranges <- DOC_data %>%
-  group_by(Reach) %>%
-  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
-# Range values across reaches
-# BDA	6.708
-# REF	6.119
-
-Total_range <- DOC_data %>%
-  summarise(Range = max(Conc_ppm)- min(Conc_ppm))
-# Range value across Date, Site, and Reach
-# 6.708
-
-# Might not expect to see a difference in DOC because you are already normalizing
-# to the volume, loads should change these data. 
-# What would increase the solubility of DOC in a stream, temperature?
+#### Stats ####
 
 docsum <- DOC_data %>%
   group_by(Date, Site, Reach) %>%
@@ -331,6 +289,8 @@ spoc_cld <- cld(spoc_emm,
 spoc_cld$.group = gsub(" ", "", spoc_cld$.group)
 spoc_cld <- arrange(spoc_cld, Date, Site, Reach)
 
+spoc_cld$.group <- if_else(spoc_cld$.group == "b", "*","")
+
 #### SPOC Ribbon Plot ####
 ggplot(data = spoc_emm_sum) +
   geom_ribbon(aes(x = Date,
@@ -346,6 +306,9 @@ ggplot(data = spoc_emm_sum) +
                 group = Reach, 
                 color = Reach), 
             lwd = 1) +
+  geom_text(data = spoc_cld, aes(x = Date, y = response, label= .group,
+                                          vjust = -1.5, hjust = 0.5),
+            size = 6, position = position_dodge(0.5), color = "black") +
   scale_y_continuous(expand = c(0,0)) +
   scale_x_discrete(expand = c(0,0)) +
   scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
@@ -357,77 +320,30 @@ ggplot(data = spoc_emm_sum) +
   theme(plot.title = element_text(hjust = 0.5), 
         axis.text = element_text(colour = "black"), 
         axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  facet_grid(rows = vars(Site))
+  facet_grid(rows = vars(Site)) 
 
-#### Ranges ####
-spocrange <- SPOC_data %>%
-  group_by(Site, Reach) %>%
-  summarise(Range = max(SPOC)- min(SPOC))
-# Range values for each Site & Reach across Date
-# FH	BDA	0.94
-# FH	REF	0.83
-# LP	BDA	1.87
-# LP	REF	1.61
-# TP	BDA	0.57
-# TP	REF	0.63
-
-spocrange1 <- SPOC_data %>%
+#### Stats ####
+emm_avg <- spoc_emm_sum %>%
   group_by(Site) %>%
-  summarise(Range = max(SPOC)- min(SPOC))
-# Range values for each Site across Date and Reach 
-# FH	1.04
-# LP	1.87
-# TP	0.63
+  summarise(mean_response = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL))
 
-spocrange2 <- SPOC_data %>%
-  group_by(Reach) %>%
-  summarise(Range = max(SPOC)- min(SPOC))
-# Range values across reaches
-# BDA	1.87
-# REF	1.67
-
-# Really need to see how load would change what we are seeing. 
-# Was there higher discharge on the days we see a spike at LP? 
-
-spocsum <- SPOC_data %>%
-  group_by(Date, Site, Reach) %>%
-  summarise(Avg = mean(SPOC))
-# 6/14/2021:LP:REF 2.307143 
-# 6/28/2021:LP:BDA 1.474748
-# 7/12/2021:FH:BDA 1.634518
-# 8/9/2021:FH:BDA 1.625
-# 8/9/2021:LP:BDA 2.688172
-# 8/9/2021:TP:BDA 1.446808
-# 8/25/2021:LP:BDA 6.452381
-# 9/7/2021:FH:BDA 1.46988
-# 9/7/2021:TP:BDA 1.884616
-
-spocsum1 <- SPOC_data %>%
+emm_avg1 <- spoc_emm_sum %>%
   group_by(Site, Reach) %>%
-  summarise(Avg = mean(SPOC)) 
-# FH    BDA   0.974
-# FH    REF   0.775
-## 0.2043121
-# LP    BDA   0.534
-# LP    REF   0.394
-## 0.2621
-# TP    BDA   0.321
-# TP    REF   0.282
-## 0.1214953
+  summarise(mean_response = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL)) 
+pivot <- emm_avg1 %>%
+  pivot_wider(names_from = Reach, values_from = c(mean_response, mean_UCL, mean_LCL))
 
-spocsum2 <- SPOC_data %>%
-  group_by(Reach) %>%
-  summarise(Avg = mean(SPOC))
-# BDA   0.612
-# REF   0.483
-## 1.267081
 
-spocsum3 <- SPOC_data %>%
-  group_by(Site) %>%
-  summarise(Avg = mean(SPOC))
-# FH 0.8745238
-# LP 0.4605000
-# TP 0.3016667
+
+
+
+
+  
+
 
 FH <- SPOC_data %>%
   filter(Site == "FH") %>%
@@ -467,9 +383,6 @@ FH_ref <- SPOC_data %>%
   filter(Site == "FH", Reach == "REF") %>%
   pull(SPOC)
 sd(FH_ref) # 0.2068724
-
-percent
-
 
 #### DOC SPOC Ratios ####
 DOC <- DOC_data %>%
