@@ -199,56 +199,8 @@ ggplot(data = cdioxide_emm_sum) +
   # axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5)) +
   facet_grid(rows = vars(Site))
 
+#### Stats ####
 
-co2sum <- CO2_fluxes %>%
-  filter(Site == "FH") %>%
-  group_by(Date, Reach) %>%
-  summarise(Avg = mean(CO2_flux_g))
-# 7/26/2021:FH:REF 5.564029
-# 8/9/2021:FH:REF 3.899408
-# 8/25/2021:FH:REF 2.654296
-# 9/7/2021:FH:REF 3.227161
-
-
-co2sum1 <- CO2_fluxes %>%
-  group_by(Site, Reach) %>%
-  summarise(Avg = mean(CO2_flux_g))
-# FH    BDA    1.13
-# FH    REF    2.03
-## 1.79646
-# LP    BDA    1.24
-# LP    REF    1.07
-## 1.158879
-# TP    BDA    2.55
-# TP    REF    2.80
-## 1.098039
-
-co2sum2 <- CO2_fluxes %>%
-  group_by(Reach) %>%
-  summarise(Avg = mean(CO2_flux_g))
-# BDA    1.68
-# REF    1.96
-## 1.166667
-
-cdioxiderange <- CO2_fluxes %>%
-  group_by(Site) %>%
-  summarise(Range = max(CO2_flux_g)- min(CO2_flux_g))
-# Range values for each Site across Date and Reach 
-# FH     5.58
-# LP     2.73
-# TP     6.36
-
-cdioxiderange1 <- CO2_fluxes %>%
-  group_by(Reach) %>%
-  summarise(Range = max(CO2_flux_g)- min(CO2_flux_g))
-# Range values across reaches
-# BDA    6.30
-# REF    5.91
-
-cdioxiderange2 <- CO2_fluxes %>%
-  summarise(Range = max(CO2_flux_g)- min(CO2_flux_g))
-# Range value across Date, Site, and Reach
-# 6.497249
 
 # labels = c("6/7/2021", "", "6/28/2021", "", "7/26/2021", "", "8/25/2021", ""))
 
@@ -299,46 +251,8 @@ ggplot(data = methane_emm_sum) +
         axis.text = element_text(colour = "black")) +
   facet_grid(rows = vars(Site))
 
+#### Stats ####
 
-ch4sum1 <- CH4_fluxes %>%
-  group_by(Site, Reach) %>%
-  summarise(Avg = mean(CH4_flux_g))
-# FH    BDA   -0.0000478
-# FH    REF    0.000550 
-## 11.50628 higher in REF
-# LP    BDA    0.000798 
-# LP    REF    0.000649 
-## 1.229584 higher in BDA 
-# TP    BDA    0.000546 
-# TP    REF    0.000852
-## 1.56044 higher in REF
-
-ch4sum1 <- CH4_fluxes %>%
-  group_by(Reach) %>%
-  summarise(Avg = mean(CH4_flux_g))
-# BDA    1.68
-# REF    1.96
-## 1.166667
-
-methanerange1 <- CH4_fluxes %>%
-  group_by(Site) %>%
-  summarise(Range = max(CH4_flux_g)- min(CH4_flux_g))
-# Range values for each Site across Date and Reach 
-# FH    0.00338
-# LP    0.00633
-# TP    0.00668
-
-methanerange2 <- CH4_fluxes %>%
-  group_by(Reach) %>%
-  summarise(Range = max(CH4_flux_g)- min(CH4_flux_g))
-# Range values across reaches
-# BDA    0.00698
-# REF    0.00512
-
-methanerange3 <- CH4_fluxes %>%
-  summarise(Range = max(CH4_flux_g)- min(CH4_flux_g))
-# Range value across Date, Site, and Reach
-# 0.006977156
 
 #### Soil Moisture ####
 
@@ -355,6 +269,12 @@ Anova(soillm)
 soillm_emm <- emmeans(soillm, ~ Reach|Date|Site,
                         type = "response")
 soillm_emm_sum <- summary(soillm_emm)
+
+soil_mois_cld <- cld(soillm_emm,
+               by = c("Site", "Date"),
+               alpha = 0.05, 
+               Letters = letters,
+               decreasing = TRUE)
 
 
 ## Plots
@@ -415,6 +335,12 @@ templm_emm <- emmeans(templm, ~ Reach|Date|Site,
                       type = "response")
 templm_emm_sum <- summary(templm_emm)
 
+templm_cld <- cld(templm_emm,
+                     by = c("Site", "Date"),
+                     alpha = 0.05, 
+                     Letters = letters,
+                     decreasing = TRUE)
+
 
 ## Temperature plot
 ggplot(data = templm_emm_sum) +
@@ -443,5 +369,64 @@ ggplot(data = templm_emm_sum) +
         axis.text = element_text(colour = "black")) +
   facet_grid(rows = vars(Site)) 
   
+### EC 
+hist(HydraGO_data$EC)
 
+eclm <- glmer(EC ~ Date/Site/Reach + (1|Chamber),
+               data = HydraGO_data,
+              control = glmerControl(optimizer = "bobyqa",
+                                     optCtrl = list(maxfun = 100000)),
+              family = Gamma("log"))
+plot(eclm)
+Anova(eclm)
+
+eclm_emm <- emmeans(eclm, ~ Reach|Date|Site,
+                      type = "response")
+eclm_emm_sum <- summary(eclm_emm)
+
+## Ribbon plot
+ggplot(data = eclm_emm_sum) +
+  geom_ribbon(aes(x = Date,
+                  ymin = asymp.LCL, 
+                  ymax = asymp.UCL,
+                  group = Reach,
+                  fill = Reach), 
+              alpha = 0.40, 
+              color = NA) + # opaqueness of the CI
+  # fill = "#3984ff") +
+  geom_line(aes(x = Date, 
+                y = response, 
+                group = Reach, 
+                color = Reach), 
+            lwd = 1) +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0), guide = guide_axis(angle = 45)) +
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Riparian Soil EC", 
+       x = "Date", 
+       y = "Soil EC(S/m)") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black")) +
+  facet_grid(rows = vars(Site)) 
+
+## line plot only
+HydraGO_data %>%
+  group_by(Date, Site, Reach) %>%
+  summarise(Avg = mean(EC)) %>%
+  ggplot(aes(Date, Avg, color = Reach, group = Reach)) +
+  geom_line(lwd = 1) +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
+  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
+  labs(title = "Riparian Soil EC", 
+       x = "Date", 
+       y = "Soil EC (S/m)") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(colour = "black"), 
+        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  facet_grid(rows = vars(Site))
 
