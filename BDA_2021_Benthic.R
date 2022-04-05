@@ -129,6 +129,8 @@ Benthic_data[,1:4] <- lapply(Benthic_data[,1:4], as.factor)
 Benthic_data$Location <- ordered(Benthic_data$Location, levels = c("LWR", "MID", "UPR"))
 Benthic_data$Replicate <- ordered(Benthic_data$Replicate, levels = c(1:3))
 
+write.csv(Benthic_data, "Benthic_data.csv", row.names = FALSE)
+
 ### GLMM ###
 # Final model decided 3/17/22
 finalbenthicmodel <- glmer(Total_BPOC_Mass_per_Area ~ Date/Site/Reach + (1|Location/Replicate),
@@ -198,62 +200,8 @@ ggplot() +
 # rep(-1.8, 5), 2, rep(-1.8, 5)
 
 #### Ranges ####
-benthicrange <- Benthic_data %>%
-  group_by(Site, Reach) %>%
-  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
-# Range values for each Site & Reach across Date
-# FH BDA 172.40974
-# FH REF 35.94535
-# LP BDA 117.40862
-# LP REF 137.98502
-# TP BDA 181.34391
-# TP REF 88.78838
 
-benthicrange1 <- Benthic_data %>%
-  group_by(Site) %>%
-  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
-# Range values for each Site across Date and Reach 
-# FH 173.8667
-# LP 137.9850
-# TP 183.7032
 
-benthicrange2 <- Benthic_data %>%
-  group_by(Reach) %>%
-  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
-# Range values across reaches
-# BDA	182.6206
-# REF	138.2973
-
-benthicrange3 <- Benthic_data %>%
-  summarise(Range = max(Total_BPOC_Mass_per_Area)- min(Total_BPOC_Mass_per_Area))
-# Range value across Date, Site, and Reach
-# 184.0776
-
-benthicsum <- Benthic_data %>%
-  group_by(Site, Reach) %>%
-  summarise(Avg = mean(Total_BPOC_Mass_per_Area))
-# FH BDA 47.803943
-# FH REF 3.349299 
-## 14.27 fold higher in BDA across all months
-# LP BDA 35.942282
-# LP REF 33.900297
-## 1.06 fold higher in BDA across all months
-# TP BDA 43.529526
-# TP REF 24.259833
-## 1.79 fold higher in BDA across all months
-
-benthicsum1 <- Benthic_data %>%
-  group_by(Site) %>%
-  summarise(Avg = mean(Total_BPOC_Mass_per_Area))
-# FH 24.72172
-# LP 34.90203
-# TP 33.71289
-
-benthicsum2 <- Benthic_data %>%
-  group_by(Reach) %>%
-  summarise(Avg = mean(Total_BPOC_Mass_per_Area))
-# BDA 42.35540
-# REF 20.50314
 
 #### Data for proportions ####
 Benthic_sum <- Benthic_data %>%
