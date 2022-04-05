@@ -11,6 +11,7 @@ library(tidyverse)  # loads several useful packages, including ggplot2,
 # tidyr, and dplyr
 library(lubridate)
 # library(ggpubr)
+library(plotrix)
 
 #### DOC #### 
 DOC <- read.csv("DOC_Data.csv", header = T, sep = ",") %>% 
@@ -70,6 +71,8 @@ DOC_data[,1:5] <- lapply(DOC_data[,1:5], as.factor)
 
 DOC_data$Replicate <- ordered(DOC_data$Replicate, levels = c(1:3))
 
+write.csv(DOC_data, "DOC_data.csv", row.names = F)
+
 #### DOC Models ####
 # Histogram to see the distribution of the data
 # Data is right skewed, and sort of has a bimodal character
@@ -86,13 +89,19 @@ AIC(finaldocmodel) # 360.3364
 AICc(finaldocmodel) # 422.924
 summary(finaldocmodel)
 anova(finaldocmodel)
+aov(finaldocmodel)
 
 #### Post-hoc tests ####
 ### Emmeans
 doc_emm <- emmeans(finaldocmodel, ~ Reach|Date|Site,
-                       type = "response")
+                       type = "response", 
+                   nesting = "Site %in% Date, Reach %in% (Date*Site)")
 doc_emm_sum <- summary(doc_emm)
 
+doc_pair <- pairs(doc_emm, adjust = "bonferroni")
+doc_pair_sum <- summary(doc_pair)
+doc_pair_sum$p.value <- p.adjust(doc_pair_sum$p.value, 
+                             method = "bonferroni")
 ### CLD 
 doc_cld <- cld(doc_emm,
                          by = c("Site", "Date"),
@@ -205,6 +214,30 @@ docsum2 <- DOC_data %>%
 # REF 2.874487
 ## 1.063417 fold higher in BDA reaches
 
+std_error <- function(x) sd(x)/sqrt(length(x))
+
+docsum3 <- DOC_data %>%
+  group_by(Site) %>%
+  filter(Date == "06/01/2021") %>%
+  summarise(Avg = mean(Conc_ppm))
+# FH     6.32
+# LP     5.44
+# TP     2.95
+
+docsum4 <- DOC_data %>%
+  group_by(Site, Reach) %>%
+  filter(Date == "06/01/2021") %>%
+  summarise(Avg = mean(Conc_ppm))
+
+docsum5 <- DOC_data %>%
+  group_by(Site) %>%
+  filter(Date == "09/07/2021") %>%
+  summarise(Avg = mean(Conc_ppm))
+# FH     1.48
+# LP     1.77
+# TP     1.91
+
+
 #### SPOC #####
 SPOC_data <- read.csv("BDA_SPOC_Calc.csv", header = T, sep = ",") %>% 
   filter(SPOC > 0, Reach != "GS", Reach != "DS") %>%
@@ -264,6 +297,8 @@ SPOC_data$Replicate <- ordered(SPOC_data$Replicate,
                                levels = c(1:3))
 hist(SPOC_data$SPOC)
 
+write.csv(SPOC_data, "SPOC_data.csv", row.names = F)
+
 #### GLMM for SPOC ####
 # SPOC_data <- SPOC_data %>% 
 #   mutate(Date = as.factor(as.Date(mdy(Date)))
@@ -283,6 +318,9 @@ spoc_emm <- emmeans(finalspocmodel, ~ Reach|Date|Site,
                    type = "response")
 
 spoc_emm_sum <- summary(spoc_emm)
+
+spoc_pair <- pairs(spoc_emm, adjust = "bonferroni")
+spoc_pair_sum <- summary(spoc_pair)
 
 ### CLD
 spoc_cld <- cld(spoc_emm,
@@ -366,16 +404,16 @@ spocsum <- SPOC_data %>%
 
 spocsum1 <- SPOC_data %>%
   group_by(Site, Reach) %>%
-  summarise(Avg = mean(SPOC))
+  summarise(Avg = mean(SPOC)) 
 # FH    BDA   0.974
 # FH    REF   0.775
-## 1.256774
+## 0.2043121
 # LP    BDA   0.534
 # LP    REF   0.394
-## 1.35533
+## 0.2621
 # TP    BDA   0.321
 # TP    REF   0.282
-## 1.138298
+## 0.1214953
 
 spocsum2 <- SPOC_data %>%
   group_by(Reach) %>%
@@ -384,6 +422,53 @@ spocsum2 <- SPOC_data %>%
 # REF   0.483
 ## 1.267081
 
+spocsum3 <- SPOC_data %>%
+  group_by(Site) %>%
+  summarise(Avg = mean(SPOC))
+# FH 0.8745238
+# LP 0.4605000
+# TP 0.3016667
+
+FH <- SPOC_data %>%
+  filter(Site == "FH") %>%
+  pull(SPOC)
+std_error(FH) # 0.0372177
+
+LP <- SPOC_data %>%
+  filter(Site == "LP") %>%
+  pull(SPOC)
+std_error(LP) # 0.06365265
+
+TP <- SPOC_data %>%
+  filter(Site == "TP") %>%
+  pull(SPOC)
+std_error(TP) # 0.02063711
+
+sd(LP) # 0.4025747
+sd(FH) #  0.2411983
+sd(TP) #  0.1337438
+
+LP_bda <- SPOC_data %>%
+  filter(Site == "LP", Reach == "BDA") %>%
+  pull(SPOC)
+sd(LP_bda) # 0.4458614
+
+LP_ref <- SPOC_data %>%
+  filter(Site == "LP", Reach == "REF") %>%
+  pull(SPOC)
+sd(LP_ref) # 0.3567699
+
+FH_bda <- SPOC_data %>%
+  filter(Site == "FH", Reach == "BDA") %>%
+  pull(SPOC)
+sd(FH_bda) # 0.2357238
+
+FH_ref <- SPOC_data %>%
+  filter(Site == "FH", Reach == "REF") %>%
+  pull(SPOC)
+sd(FH_ref) # 0.2068724
+
+percent
 
 
 #### DOC SPOC Ratios ####
