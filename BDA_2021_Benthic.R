@@ -199,8 +199,26 @@ ggplot() +
 # This code is to change the orientation of the letter display
 # rep(-1.8, 5), 2, rep(-1.8, 5)
 
-#### Ranges ####
+#### Stats ####
+benthic_date_sum <- benthic_emm_sum %>%
+  group_by(Date, Site) %>%
+  summarise(Avg = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL))
 
+benthic_reach_sum <- benthic_emm_sum %>%
+  group_by(Site, Reach) %>%
+  summarise(Avg = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL))
+
+
+benthic_site_sum <- benthic_emm_sum %>%
+  group_by(Site) %>%
+  summarise(Avg = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL))
+  
 
 
 #### Data for proportions ####
