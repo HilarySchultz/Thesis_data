@@ -11,23 +11,25 @@ library(tidyverse)  # loads several useful packages, including ggplot2,
 # tidyr, and dplyr
 library(lubridate)
 # library(ggpubr)
-library(plotrix)
+library(rstatix)
+library(MuMIn)
+library(gridExtra)
 
 #### DOC #### 
-DOC <- read.csv("DOC_Data.csv", header = T, sep = ",") %>% 
-  filter(Conc_ppm > 0, Reach != "GS", Reach != "DS") %>% # Filtering out null data and removing GS and DS
-  select(-Location)
+DOC <- read.csv("DOC_Data.csv", header = T, sep = ",") %>%
+  filter(Conc_ppm > 0, Reach != "GS", Reach != "DS") %>%
+  select(Date, Site, Reach, Replicate, Conc_ppm) %>%
+  rename(Segment = Reach)
 
 # Identifying outliers. The function identify_outliers() creates two new columns that ID outliers (1.5)
 # and extreme outliers (3), Which are 1.5 and 3 standard deviations away from the mean, respectively. 
 # I removed extreme outliers and doubled checked that those matched up with the observational data. 
 
 doc_outliers <- DOC %>%
-  # group_by(Date, Site) %>%
   rstatix::identify_outliers("Conc_ppm") %>%
   filter(is.extreme == TRUE)
 
-# Removed outliers from dataframe changing dates
+# Removed outliers from dataframe
 DOC_data <- anti_join(DOC, doc_outliers) %>%
   rename(Time = Date) 
 
@@ -62,46 +64,71 @@ DOC_data <- DOC_data %>%
                           Time == "09/08/2021" ~ "09/07/2021",
                           Time == "09/10/2021" ~ "09/07/2021" )) 
 
-# Changing Time, Date, Sample, Site, Reach, Replicate to ordered factors
-DOC_data[,1:5] <- lapply(DOC_data[,1:5], as.factor)
+# Time and Date as ordered factors; Segment, Site, and Replicate are factors
+DOC_data$Time <- as.ordered(DOC_data$Time)
+DOC_data$Date <- as.ordered(DOC_data$Date)
+DOC_data$Segment <- as.factor(DOC_data$Segment)
+DOC_data$Site <- as.factor(DOC_data$Site)
+DOC_data$Replicate <- as.factor(DOC_data$Replicate)
 
-# DOC_data$Date <- ordered(DOC_data$Date, 
-#                          levels = c("6/1/2021", "6/7/2021", "6/14/2021", "6/28/2021", 
-#                                     "7/12/2021", "7/26/2021", "8/9/2021", "8/25/2021", "9/7/2021"))
-
-DOC_data$Replicate <- ordered(DOC_data$Replicate, levels = c(1:3))
-
-write.csv(DOC_data, "DOC_data.csv", row.names = F)
+# write.csv(DOC_data, "DOC_cleaned_data.csv", row.names = F)
 
 #### DOC Models ####
 # Histogram to see the distribution of the data
 # Data is right skewed, and sort of has a bimodal character
-DOC_data %>% ggplot(aes(Conc_ppm)) +
+DOC_data %>% 
+ggplot(aes(Conc_ppm)) +
   geom_histogram(binwidth = 0.1) 
 
 #### DOC GLMM ####
-finaldocmodel <- glmer(Conc_ppm ~ Date/Site/Reach + (1|Replicate),
+finaldocmodel <- glmer(Conc_ppm ~ Date/Site/Segment + (1|Replicate),
                   data = DOC_data, 
                   family = Gamma(link = "log"))
 plot(finaldocmodel)
 Anova(finaldocmodel)
-AIC(finaldocmodel) # 360.3364
-AICc(finaldocmodel) # 422.924
+AIC(finaldocmodel) # 360.3364 
+AICc(finaldocmodel) # 422.924 
 summary(finaldocmodel)
-anova(finaldocmodel)
-aov(finaldocmodel)
+
+# R2m = marginal - the variance explained by the fixed effects
+# R2c = conditional - the variance explained by the entire model, including random and fixed
+doc_fit <- r.squaredGLMM(finaldocmodel)
+
+# Seeing if the data meets the normal distribution assumption
+# shapiro.test(log(DOC_data$Conc_ppm)) # W = 0.85684, p-value = 0.00000000003756
+# qqPlot(log(DOC_data$Conc_ppm)) # This tests/shows if the data is normally distributed
+# small p-value implies that the distribution of the data is drastically special
+# from the normal distribution so we don't count on normality. 
+
+# It is not so we need to use the Levene test to see if there are differences
+# between the tested sample variances. 
+# levenetestdoc <- leveneTest(Conc_ppm ~ Date*Site*Segment, 
+                            # data = DOC_data)
+# p<0.05 says that the variances are relatively equal so we can use Tukey as post-hoc
 
 #### Post-hoc tests ####
 ### Emmeans
-doc_emm <- emmeans(finaldocmodel, ~ Reach|Date|Site,
-                       type = "response", 
-                   nesting = "Site %in% Date, Reach %in% (Date*Site)")
+# Tukey adjusted, this is what I'm using 4/9
+doc_emm <- emmeans(finaldocmodel, pairwise ~ Segment|Date|Site, 
+                   adjust = "none",
+                     type = "response",
+                     nesting = "Date %in% Site, Segment %in% (Site*Date)")
 doc_emm_sum <- summary(doc_emm)
+doc_emmeans <- summary(doc_emm$emmeans)
+doc_emm_contrast <- summary(doc_emm$contrasts) # p values
 
-doc_pair <- pairs(doc_emm, adjust = "bonferroni")
-doc_pair_sum <- summary(doc_pair)
-doc_pair_sum$p.value <- p.adjust(doc_pair_sum$p.value, 
-                             method = "bonferroni")
+# doc_emm_contrast1 <- doc_emm_contrast %>%
+#   mutate(p.bon = p.adjust(p.value, method = "bonferroni"),
+#          p.holm = p.adjust(p.value, method = "holm"),
+#          p.sig = if_else(p.holm < signif(0.05,5), "*", ""))
+# doc_emm <- emmeans(finaldocmodel, ~ Reach|Site|Date,
+#                        type = "response",
+#                    nesting = "Date %in% Site, Reach %in% (Site*Date)")
+# doc_emm_sum <- summary(doc_emm)
+# doc_pair_sum$p.value <- p.adjust(doc_pair_sum$p.value, 
+#                              method = "bonferroni")
+# doc_p_adjust <- pairwise.t.test(doc_pair_sum$p.value, doc_pair_sum$contrast, p.adjust.method="bonferroni")
+
 ### CLD 
 doc_cld <- cld(doc_emm,
                          by = c("Site", "Date"),
@@ -109,98 +136,74 @@ doc_cld <- cld(doc_emm,
                          Letters = letters,
                          decreasing = TRUE)
 doc_cld$.group = gsub(" ", "", doc_cld$.group)
-doc_cld <- arrange(doc_cld, Date, Site, Reach)
+doc_cld <- arrange(doc_cld, Date, Site, Segment)
 doc_cld$.group <- if_else(doc_cld$.group == "b", "*","")
 
 #### DOC Ribbon Plot ####
-ggplot(data = doc_emm_sum) +
+ggplot(data = doc_emmeans) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
-                  group = Reach,
-                  fill = Reach), 
+                  group = Segment,
+                  fill = Segment), 
               alpha = 0.40, 
               color = NA) + # opaqueness of the CI
-  # fill = "#3984ff") +
+  # fill = "#3984ff") 
   geom_line(aes(x = Date, 
                 y = response, 
-                group = Reach, 
-                color = Reach), 
+                group = Segment, 
+                color = Segment,
+                linetype = Segment), 
             lwd = 1) +
   geom_text(data = doc_cld, aes(x = Date, y = response, label= .group,
                                  vjust = -1.5, hjust = 0.5),
             size = 6, position = position_dodge(0.5), color = "black") +
   scale_y_continuous(expand = c(0,0)) +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
-  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
-  labs(title = "Dissolved Organic Carbon", 
-       x = "Date", 
-       y = expression(Concentration~(mg~C~L^-1))) +
+  scale_x_discrete(guide = guide_axis(angle = 45), 
+                   # labels = c("June 1, 2021", "", "June 14,2021", "", "July 12, 2021", "",
+                   #            "August 9, 2021", "", "September 7, 2021"),
+                   # labels = c("June","June","June", "June", "July","July", "August", "August", "September"),
+                   expand = c(0,0)) +
+  scale_color_manual(name = "Segment", labels = c("Treatment", "Reference"), values = c("#0072B2", "#009E73")) +
+  scale_fill_manual(name = "Segment", labels = c("Treatment", "Reference"), values = c("#0072B2", "#009E73")) + 
+  labs(title = NULL, 
+       x = NULL, 
+       y = expression(Dissolved~Organic~Carbon~(mg~L^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-          facet_grid(rows = vars(Site))
+        axis.text = element_text(colour = "black", size = 12),
+        panel.spacing.x = unit(1, "lines"),
+        axis.title = element_text(size = 12),
+        axis.title.y = element_text(size = 14)) +
+  # axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5)) +
+  facet_grid(rows = vars(Site))
 
 #### Stats ####
+doc_date_sum <- doc_emmeans %>%
+  group_by(Date, Site) %>%
+  summarise(Avg = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL))
 
-docsum <- DOC_data %>%
-  group_by(Date, Site, Reach) %>%
-  summarise(Avg = mean(Conc_ppm)) 
-# 7/26/2021:FH:REF 1.616053
-# 7/26/2021:TP:BDA 1.630694
-# 8/9/20021:LP:REF 1.369805
+doc_site_sum <- doc_emmeans %>%
+  group_by(Site) %>%
+  summarise(Avg = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL))
 
-docsum1 <- DOC_data %>%
-  group_by(Site, Reach) %>%
-  summarise(Avg = mean(Conc_ppm))
-# FH    BDA    3.40
-# FH    REF    3.08
-## 1.10 fold higher in BDA reach
-# LP    BDA    2.99
-# LP    REF    2.90
-## 1.03 fold higer in BDA reach
-# TP    BDA    2.78
-# TP    REF    2.63
-## 1.06 fold higher in BDA reach
-
-docsum2 <- DOC_data %>%
-  group_by(Reach) %>%
-  summarise(Avg = mean(Conc_ppm))
-# BDA 3.056778
-# REF 2.874487
-## 1.063417 fold higher in BDA reaches
+doc_reach_sum <- doc_emmeans %>%
+  group_by(Site, Segment) %>%
+  summarise(Avg = mean(response),
+            mean_UCL = mean(asymp.UCL),
+            mean_LCL = mean(asymp.LCL)) 
 
 std_error <- function(x) sd(x)/sqrt(length(x))
-
-docsum3 <- DOC_data %>%
-  group_by(Site) %>%
-  filter(Date == "06/01/2021") %>%
-  summarise(Avg = mean(Conc_ppm))
-# FH     6.32
-# LP     5.44
-# TP     2.95
-
-docsum4 <- DOC_data %>%
-  group_by(Site, Reach) %>%
-  filter(Date == "06/01/2021") %>%
-  summarise(Avg = mean(Conc_ppm))
-
-docsum5 <- DOC_data %>%
-  group_by(Site) %>%
-  filter(Date == "09/07/2021") %>%
-  summarise(Avg = mean(Conc_ppm))
-# FH     1.48
-# LP     1.77
-# TP     1.91
-
 
 #### SPOC #####
 SPOC_data <- read.csv("BDA_SPOC_Calc.csv", header = T, sep = ",") %>% 
   filter(SPOC > 0, Reach != "GS", Reach != "DS") %>%
-  select(!Site.ID) %>%
-  rename(Time = Date)
+  select(-Site.ID, -Sample, -Location) %>%
+  rename(Time = Date, Segment = Reach)
 
 spoc_outliers <- SPOC_data %>%
   rstatix::identify_outliers("SPOC") %>%
@@ -246,13 +249,20 @@ SPOC_data <- SPOC_data %>%
                           Time == "09/08/2021" ~ "09/07/2021",
                           Time == "09/10/2021" ~ "09/07/2021" ))
 
-SPOC_data[,1:5] <- lapply(SPOC_data[,1:5], as.factor)
+# Setting info to factors and numeric values
+SPOC_data$Time <- as.ordered(SPOC_data$Time)
+SPOC_data$Date <- as.ordered(SPOC_data$Date)
+SPOC_data$Segment <- as.factor(SPOC_data$Segment)
+SPOC_data$Site <- as.factor(SPOC_data$Site)
+SPOC_data$Replicate <- as.factor(SPOC_data$Replicate)
+
+
+# SPOC_data[,1:5] <- lapply(SPOC_data[,1:5], as.factor)
 
 # SPOC_data$Date <- ordered(SPOC_data$Date,
 #                          levels = c("6/14/2021", "6/28/2021","7/12/2021", "7/26/2021",
 #                                     "8/9/2021", "8/25/2021", "9/7/2021"))
-SPOC_data$Replicate <- ordered(SPOC_data$Replicate, 
-                               levels = c(1:3))
+
 hist(SPOC_data$SPOC)
 
 write.csv(SPOC_data, "SPOC_data.csv", row.names = F)
@@ -261,7 +271,7 @@ write.csv(SPOC_data, "SPOC_data.csv", row.names = F)
 # SPOC_data <- SPOC_data %>% 
 #   mutate(Date = as.factor(as.Date(mdy(Date)))
 
-finalspocmodel <- glmer(SPOC ~ Date/Site/Reach + (1|Replicate),
+finalspocmodel <- glmer(SPOC ~ Date/Site/Segment + (1|Replicate),
                    data = SPOC_data, 
                    family = Gamma(link = "log"))
 plot(finalspocmodel)
@@ -270,16 +280,50 @@ AIC(finalspocmodel) # -129.5816
 AICc(finalspocmodel) # -79.45506
 summary(finalspocmodel)
 
-#### Post-hoc Tests ####
-### Emmeans
-spoc_emm <- emmeans(finalspocmodel, ~ Reach|Date|Site,
-                   type = "response")
+spoc_fit <- r.squaredGLMM(finalspocmodel)
 
+# shapiro.test(SPOC_data)
+# shapiro.test(SPOC_data$SPOC) # W = 0.96985, p-value = 0.007091
+# qqPlot(SPOC_data$SPOC)
+# Not normally distributed 
+
+# levene_spoc <- SPOC_data %>%
+#   group_by(Date, Site) %>%
+#   levene_test(SPOC~Reach)
+# 
+# levenetestspoc <- leveneTest(SPOC ~ Date/Site/Reach, 
+#                             data = SPOC_data)
+# 
+# pwc <- SPOC_data %>%
+#   group_by(Date, Site) %>%
+#   pairwise_t_test(
+#     SPOC ~ Reach, paired = FALSE,
+#     p.adjust.method = "bonferroni"
+#   ) 
+
+spoc_emm <- emmeans(finalspocmodel, pairwise ~ Segment|Date|Site, 
+                     type = "response",
+                     nesting = "Date %in% Site, Segment %in% (Site*Date)")
 spoc_emm_sum <- summary(spoc_emm)
+spoc_emmeans <- summary(spoc_emm$emmeans)
+spoc_emm_contrast <- summary(spoc_emm$contrasts) # p values
 
-spoc_pair <- pairs(spoc_emm, adjust = "bonferroni")
-spoc_pair_sum <- summary(spoc_pair)
+# spoc_emm_contrast <- spoc_emm_contrast %>%
+#   mutate(p.bon = p.adjust(p.value, method = "bonferroni"),
+#          p.holm = p.adjust(p.value, method = "holm"),
+#          p.sig = if_else(p.value < signif(0.05,5), "*", ""))
+# 
+# spoc_emm1.1 <- spoc_emm$contrasts %>%
+#   rbind() %>%
+#   summary(infer = TRUE) %>%
+#   p.sig = if_else(p.value <= 0.05, "*", "")
+# 
+# contrast_df <- spoc_emm$contrasts %>%
+#   rbind() %>%
+#   as.data.frame() %>%
+#   mutate(p.sig = if_else(p.value <= 0.05, "*", ""))
 
+#### Post-hoc Tests ####
 ### CLD
 spoc_cld <- cld(spoc_emm,
                by = c("Site", "Date"),
@@ -287,62 +331,63 @@ spoc_cld <- cld(spoc_emm,
                Letters = letters,
                decreasing = TRUE)
 spoc_cld$.group = gsub(" ", "", spoc_cld$.group)
-spoc_cld <- arrange(spoc_cld, Date, Site, Reach)
+spoc_cld <- arrange(spoc_cld, Date, Site, Segment)
 
 spoc_cld$.group <- if_else(spoc_cld$.group == "b", "*","")
 
 #### SPOC Ribbon Plot ####
-ggplot(data = spoc_emm_sum) +
+ggplot(data = spoc_emmeans) +
   geom_ribbon(aes(x = Date,
                   ymin = asymp.LCL, 
                   ymax = asymp.UCL,
-                  group = Reach,
-                  fill = Reach), 
+                  group = Segment,
+                  fill = Segment), 
               alpha = 0.40, 
               color = NA) + # opaqueness of the CI
   # fill = "#3984ff") +
   geom_line(aes(x = Date, 
                 y = response, 
-                group = Reach, 
-                color = Reach), 
+                group = Segment, 
+                color = Segment,
+                linetype = Segment),
             lwd = 1) +
   geom_text(data = spoc_cld, aes(x = Date, y = response, label= .group,
-                                          vjust = -1.5, hjust = 0.5),
+                                          vjust = -1, hjust = 0.5),
             size = 6, position = position_dodge(0.5), color = "black") +
   scale_y_continuous(expand = c(0,0)) +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_color_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) +
-  scale_fill_manual(name = "Reach", labels = c("Treatment", "Reference"), values = c("Blue", "Purple")) + 
-  labs(title = "Suspended Particulate Organic Carbon", 
-       x = "Date", 
-       y = expression(Concentration~(mg~C~L^-1))) +
+  scale_x_discrete(guide = guide_axis(angle = 45),
+  #                  labels = c("June 14,2021", "", "July 12, 2021", "",
+  #                             "August 9, 2021", "", "September 7, 2021"),
+                   # labels = c("June","June","June", "July","July", "August", "August", "September"),
+                   expand = c(0,0)) +
+  scale_color_manual(name = "Segment", labels = c("Treatment", "Reference"), values = c("#0072B2", "#009E73")) +
+  scale_fill_manual(name = "Segment", labels = c("Treatment", "Reference"), values = c("#0072B2", "#009E73")) + 
+  labs(title = NULL, 
+       x = NULL, 
+       y = expression(Suspended~Particulate~Organic~Carbon~(mg~L^-1))) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(colour = "black"), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  facet_grid(rows = vars(Site)) 
+        axis.text = element_text(colour = "black", size = 12),
+        panel.spacing.x = unit(1, "lines"),
+        axis.title = element_text(size = 12),
+        axis.title.y = element_text(size = 14)) +
+  # axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5)) +
+  facet_grid(rows = vars(Site))
 
 #### Stats ####
-emm_avg <- spoc_emm_sum %>%
+emm_avg <- spoc_emmeans %>%
   group_by(Site) %>%
   summarise(mean_response = mean(response),
             mean_UCL = mean(asymp.UCL),
             mean_LCL = mean(asymp.LCL))
 
-emm_avg1 <- spoc_emm_sum %>%
-  group_by(Site, Reach) %>%
+emm_avg1 <- spoc_emmeans %>%
+  group_by(Site, Segment) %>%
   summarise(mean_response = mean(response),
             mean_UCL = mean(asymp.UCL),
             mean_LCL = mean(asymp.LCL)) 
 pivot <- emm_avg1 %>%
-  pivot_wider(names_from = Reach, values_from = c(mean_response, mean_UCL, mean_LCL))
-
-
-
-
-
-
-  
+  pivot_wider(names_from = Reach, values_from = c(mean_response, mean_UCL, mean_LCL)) 
 
 
 FH <- SPOC_data %>%
