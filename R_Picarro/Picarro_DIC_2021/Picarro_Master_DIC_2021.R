@@ -15,49 +15,66 @@ for(f in 1:length(filelist)) {
 DIC_df <- bind_rows(DIC_files)
 
 DIC_data <- DIC_df %>%
-  group_by(DATE, Site, Location, Design) %>%
-  distinct(Triplicate_CO2_avg, Triplicate_CH4_avg) %>%
-  rename(Reach = Design)
+  rename(Segment = Design, 
+         Date = DATE, 
+         Reach = Location,
+         CO2_ppm = avg_CO2,
+         CH4_ppm = avg_CH4) %>%
+  mutate(Segment = if_else(Segment == "REF", "Reference", "Treatment")) %>%
+  mutate(Reach = case_when(Reach == "LWR" ~ "Lower", 
+                           Reach == "MID" ~ "Middle", 
+                           Reach == "UPR" ~ "Upper")) %>%
+  mutate(Date = case_when(Date == "2021-06-01" ~ "06/01/2021",
+                          Date == "2021-06-02" ~ "06/01/2021",
+                          Date == "2021-06-03" ~ "06/01/2021",
+                          Date == "2021-06-14" ~ "06/14/2021",
+                          Date == "2021-06-15" ~ "06/14/2021",
+                          Date == "2021-06-17" ~ "06/14/2021",
+                          Date == "2021-06-28" ~ "06/28/2021",
+                          Date == "2021-06-29" ~ "06/28/2021",
+                          Date == "2021-07-01" ~ "06/28/2021",
+                          Date == "2021-07-12" ~ "07/12/2021",
+                          Date == "2021-07-13" ~ "07/12/2021",
+                          Date == "2021-07-15" ~ "07/12/2021",
+                          Date == "2021-07-26" ~ "07/26/2021",
+                          Date == "2021-07-27" ~ "07/26/2021",
+                          Date == "2021-07-29" ~ "07/26/2021", 
+                          Date == "2021-08-09" ~ "08/09/2021",
+                          Date == "2021-08-10" ~ "08/09/2021",
+                          Date == "2021-08-12" ~ "08/09/2021",
+                          Date == "2021-08-25" ~ "08/25/2021",
+                          Date == "2021-08-26" ~ "08/25/2021",
+                          Date == "2021-08-29" ~ "08/25/2021",
+                          Date == "2021-09-07" ~ "09/07/2021",
+                          Date == "2021-09-08" ~ "09/07/2021",
+                          Date == "2021-09-10" ~ "09/07/2021" ))
 
-DIC_data %>% 
-  ggplot(aes(Site, Triplicate_CO2_avg, fill = Site)) + geom_boxplot() +
-  stat_summary(fun = mean, geom = "point", shape = 20, size = 2, color = "blue", fill = "blue") +
-  labs(title = expression(Instream~Dissolved~CO[2]~Concentrations), 
-       x = NULL, y = expression(CO[2]~Concentration~(ppm))) +
-  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank(), 
-                     axis.ticks = element_blank(), axis.text = element_text(colour = "black")) +
-  scale_fill_brewer(palette = "Spectral", name = "Site") + facet_grid(cols = vars(Location), 
-                                                                      rows = vars(Reach))
+# Need to add replicates in here but there were some faulty samples so reps aren't 1:3 always
+# The month of June has all the replicates
+DICreps <- DIC_data %>%
+  filter(Date %in% c("06/01/2021","06/14/2021","06/28/2021", 
+                     "07/12/2021", "07/26/2021","08/25/2021", "09/07/2021")) %>%
+  mutate(Replicate = rep(1:3, 126))
 
-DIC_data %>% 
-  ggplot(aes(Site, Triplicate_CH4_avg, fill = Site)) + geom_boxplot() +
-  stat_summary(fun = mean, geom = "point", shape = 20, size = 2, color = "blue", fill = "blue") +
-  labs(title = expression(Instream~Dissolved~CH[4]~Concentrations), 
-       x = NULL, y = expression(CH[4]~Concentration~(ppm))) +
-  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank(), 
-                     axis.ticks = element_blank(), axis.text = element_text(colour = "black")) +
-  scale_fill_brewer(palette = "Spectral", name = "Site") + facet_grid(cols = vars(Location), 
-                                                                      rows = vars(Reach))
+shortrep <- DIC_data %>%
+  filter(Date == "08/09/2021",
+         Site == "LP",
+         Segment == "Treatment",
+         Reach == "Upper") %>%
+  mutate(Replicate = 1)
 
-DIC_data %>% 
-  filter(Site == "FH") %>%
-  ggplot(aes(Site, Triplicate_CH4_avg, fill = Site)) + geom_boxplot() +
-  stat_summary(fun = mean, geom = "point", shape = 20, size = 2, color = "blue", fill = "blue") +
-  labs(title = expression(Instream~Dissolved~CH[4]~Concentrations), 
-       x = NULL, y = expression(CH[4]~Concentration~(ppm))) +
-  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank(), 
-                     axis.ticks = element_blank(), axis.text = element_text(colour = "black")) +
-  scale_fill_brewer(palette = "Spectral", name = "Site") + facet_grid(cols = vars(Location), 
-                                                                      rows = vars(Reach))
+DICshortreps <- DIC_data %>%
+  filter(Date == "08/09/2021") %>%
+  slice(-43) %>%
+  mutate(Replicate = rep(1:3, 17))
 
-DIC_data %>% 
-  ggplot(aes(Reach, Triplicate_CH4_avg, fill = Reach)) + geom_boxplot() +
-  stat_summary(fun = mean, geom = "point", shape = 20, size = 2, color = "blue", fill = "blue") +
-  labs(title = expression(Instream~Dissolved~CH[4]~Concentrations), 
-       x = NULL, y = expression(CH[4]~Concentration~(ppm))) +
-  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank(), 
-                     axis.ticks = element_blank(), axis.text = element_text(colour = "black")) +
-  scale_fill_brewer(palette = "Spectral", name = "Reach") + facet_grid(cols = vars(Location))
+DICmissingreps <- full_join(shortrep, DICshortreps)
 
+DIC_data <- full_join(DICreps, DICmissingreps)
 
+# Separate into CO2 and CH4 dfs
+DIC_CO2 <- DIC_data %>%
+  select(-Triplicate_CH4_avg, -avg_deltaCH4, -CH4_ppm, -Triplicate_delta_CH4) 
 
+DIC_CH4 <- DIC_data %>%
+  select(-Triplicate_CO2_avg, -avg_deltaCO2, -CO2_ppm, -Triplicate_CO2_avg) 
