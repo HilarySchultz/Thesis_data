@@ -3,14 +3,12 @@ library(readr)
 library(ggplot2) 
 library(tidyverse)
 
-
 ## GET FILES ##
 filelist <-list.files(path = getwd(), pattern="*.csv", full.names = TRUE)
 DIC_files <- list()
 for(f in 1:length(filelist)) {
   DIC_files[[f]] <- read.csv(filelist[f], header = T, sep = ",", as.is = T)
 }
-
 
 DIC_df <- bind_rows(DIC_files)
 
@@ -72,9 +70,45 @@ DICmissingreps <- full_join(shortrep, DICshortreps)
 
 DIC_data <- full_join(DICreps, DICmissingreps)
 
-# Separate into CO2 and CH4 dfs
+# Separated into CO2 and CH4 dfs
 DIC_CO2 <- DIC_data %>%
   select(-Triplicate_CH4_avg, -avg_deltaCH4, -CH4_ppm, -Triplicate_delta_CH4) 
 
 DIC_CH4 <- DIC_data %>%
   select(-Triplicate_CO2_avg, -avg_deltaCO2, -CO2_ppm, -Triplicate_CO2_avg) 
+
+# Reading alkalinity file
+Alkalinity <- read.csv("../Alkalinity_BDA.csv", header = T, sep = ",")
+
+Alkalinity_data <- Alkalinity %>%
+  rename(Date = Date.Sample.Taken,
+         Segment = Reach,
+         alkalinity_µmolperkg. = Alkalinity..µmol.kg.) %>%
+  filter(Segment != "DS") %>%
+  select(-File.Name, -X, -LA..ml., -pHi, -pHf, -End.T.C, -Analysis.Date) %>%
+  mutate(Segment = case_when(Segment == "BDA" ~ "Treatment",
+                             Segment == "REF" ~ "Reference")) %>%
+  mutate(Date = case_when(Date == "6/1/2021" ~ "06/01/2021",
+                          Date == "6/2/2021" ~ "06/01/2021",
+                          Date == "6/3/2021" ~ "06/01/2021",
+                          Date == "6/14/2021" ~ "06/14/2021",
+                          Date == "6/15/2021" ~ "06/14/2021",
+                          Date == "6/17/2021" ~ "06/14/2021",
+                          Date == "6/28/2021" ~ "06/28/2021",
+                          Date == "6/29/2021" ~ "06/28/2021",
+                          Date == "7/1/2021" ~ "06/28/2021",
+                          Date == "7/12/2021" ~ "07/12/2021",
+                          Date == "7/13/2021" ~ "07/12/2021",
+                          Date == "7/15/2021" ~ "07/12/2021",
+                          Date == "7/26/2021" ~ "07/26/2021",
+                          Date == "7/27/2021" ~ "07/26/2021",
+                          Date == "7/29/2021" ~ "07/26/2021", 
+                          Date == "8/9/2021" ~ "08/09/2021",
+                          Date == "8/10/2021" ~ "08/09/2021",
+                          Date == "8/12/2021" ~ "08/09/2021",
+                          Date == "8/25/2021" ~ "08/25/2021",
+                          Date == "8/26/2021" ~ "08/25/2021",
+                          Date == "8/29/2021" ~ "08/25/2021",
+                          Date == "9/7/2021" ~ "09/07/2021",
+                          Date == "9/8/2021" ~ "09/07/2021",
+                          Date == "9/10/2021" ~ "09/07/2021" ))
